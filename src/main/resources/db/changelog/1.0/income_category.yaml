@@ -1,0 +1,57 @@
+databaseChangeLog:
+
+  - changeSet:
+      id: 000000-create-table-income_category
+      author: Gasymov Ruslan
+      changes:
+        - createTable:
+            tableName: income_category
+            columns:
+              - column: { name: id, type: bigint }
+              - column: { name: account_id, type: bigint }
+              - column: { name: name, type: varchar(255) }
+
+  - changeSet:
+      id: 000000-create-constraint-income_category
+      author: Gasymov Ruslan
+      changes:
+        - addNotNullConstraint:
+            tableName: income_category
+            columnName: id
+            columnDataType: bigint
+        - addPrimaryKey:
+            columnNames: id
+            columnDataType: bigint
+            tableName: income_category
+        - addAutoIncrement:
+            columnName: id
+            columnDataType: bigint
+            tableName: income_category
+        - addForeignKeyConstraint:
+            baseColumnNames: account_id
+            baseTableName: income_category
+            constraintName: fk_income_category_account
+            referencedColumnNames: id
+            referencedTableName: account
+        - addUniqueConstraint:
+            tableName: income_category
+            columnNames: name, account_id
+            constraintName: income_category_name_unique
+
+  - changeSet:
+      id: 000001-create-constraint-income_category
+      author: Gasymov Ruslan
+      changes:
+        - addNotNullConstraint:
+            tableName: income_category
+            columnName: name
+            columnDataType: varchar(255)
+
+  - changeSet:
+      id: 000002-create-constraint-income_category
+      author: Gasymov Ruslan
+      changes:
+        - addNotNullConstraint:
+            tableName: income_category
+            columnName: account_id
+            columnDataType: bigint

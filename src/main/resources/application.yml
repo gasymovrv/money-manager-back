@@ -1,0 +1,112 @@
+server:
+  tomcat:
+    relaxed-query-chars: '|,{,},[,]'
+  api-base-url: /api
+  error:
+    whitelabel:
+      enabled: false
+  port: ${PORT:8080}
+
+spring:
+  application:
+    name: money-manager
+  main:
+    banner-mode: "off"
+    allow-bean-definition-overriding: true
+  config:
+    import: optional:file:.env[.properties]
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    default-property-inclusion: non_null
+    time-zone: UTC
+    date-format: yyyy-MM-dd HH:mm:ss
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:h2:file:./database/money-manager-db;AUTO_SERVER=TRUE}
+    driverClassName: org.h2.Driver
+    username: ${SPRING_DATASOURCE_USERNAME:sa}
+    password: ${SPRING_DATASOURCE_PASSWORD:password}
+  h2:
+    console:
+      enabled: false
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: ${ENABLE_SHOW_SQL:false}
+    open-in-view: false
+    properties:
+      hibernate:
+        default_batch_fetch_size: 500
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            clientId: ${GOOGLE_CLIENT_ID:client-id}
+            clientSecret: ${GOOGLE_CLIENT_SECRET:client-secret}
+            redirect-uri: "{baseUrl}/oauth2/callback/{registrationId}"
+            scope:
+              - email
+              - profile
+          vk:
+            client-id: ${VK_CLIENT_ID:client-id}
+            client-secret: ${VK_CLIENT_SECRET:client-id}
+            redirect-uri: "{baseUrl}/oauth2/callback/{registrationId}"
+            #use post, as vk needs clientId and clientSecret as request params and does not accepts Basic auth
+            client-authentication-method: post
+            authorization-grant-type: authorization_code
+            scope: email
+        provider:
+          vk:
+            #query param 'revoke=1' needs to always show vk dialog
+            authorization-uri: https://oauth.vk.com/authorize
+            token-uri: https://oauth.vk.com/access_token
+            user-info-uri: https://api.vk.com/method/users.get?v=5.131&fields=photo_max
+            user-name-attribute: id
+  servlet:
+    multipart:
+      max-file-size: ${MAX_UPLOAD_FILE_SIZE:20MB}
+      max-request-size: ${MAX_REQUEST_BODY_SIZE:50MB}
+  web:
+    resources:
+      cache:
+        cachecontrol:
+          max-age: 365d
+  cache:
+    cache-names: incomeCategories, expenseCategories, users
+    type: caffeine
+
+springdoc:
+  swagger-ui:
+    enabled: ${ENABLE_SWAGGER:true}
+    path: /swagger-ui
+
+logging:
+  level:
+    com.safran.apprecl: ${LOG_LEVEL_APP:INFO}
+    org.hibernate.SQL: ${LOG_LEVEL_HIBERNATE:INFO}
+    org.springframework.web: ${LOG_LEVEL_SPRING_WEB:INFO}
+    org.springframework.security: ${LOG_LEVEL_SPRING_SECURITY:INFO}
+    root: ${LOG_LEVEL_ROOT:INFO}
+  file:
+    name: ${LOGFILE_NAME:money-manager.log}
+  logback:
+    rollingpolicy:
+      max-file-size: ${LOGFILE_MAX_SIZE:100MB}
+      max-history: ${LOG_ARCHIVE_MAX_DAYS:30}
+      total-size-cap: ${LOG_ARCHIVE_MAX_SIZE:500MB}
+
+file-service:
+  root: ${FILE_STORAGE_ROOT:uploaded-files}
+  delete-import-files: ${DELETE_IMPORT_FILES:true}
+
+use-postgres: ${USE_POSTGRES:false}
+
+xlsx:
+  max-exported-rows: ${MAX_EXPORTED_ROWS:1000000}
+  show-empty-rows: ${SHOW_EMPTY_ROWS:true} # Add empty savings in the exported xlsx to fill months
+
+security:
+  token-secret: ${GOOGLE_CLIENT_SECRET:client-secret}
+  token-expiration-period: ${TOKEN_EXPIRATION_PERIOD:60m}
+  allowed-origins: ${ALLOWED_ORIGINS:http://localhost:3000, http://localhost:8080}

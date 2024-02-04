@@ -1,0 +1,48 @@
+databaseChangeLog:
+
+  - changeSet:
+      id: 000000-create-table-users
+      author: Gasymov Ruslan
+      changes:
+        - createTable:
+            tableName: users
+            columns:
+              - column: { name: id, type: varchar(255) }
+              - column: { name: name, type: varchar(255) }
+              - column: { name: picture, type: text }
+              - column: { name: email, type: varchar(255) }
+              - column: { name: locale, type: varchar(255) }
+              - column: { name: last_visit, type: timestamp }
+              - column: { name: current_account_id, type: bigint }
+
+  - changeSet:
+      id: 000000-create-constraint-users
+      author: Gasymov Ruslan
+      changes:
+        - addNotNullConstraint:
+            tableName: users
+            columnName: id
+            columnDataType: varchar(255)
+        - addPrimaryKey:
+            columnNames: id
+            tableName: users
+        - addNotNullConstraint:
+            tableName: users
+            columnName: current_account_id
+            columnDataType: bigint
+
+  - changeSet:
+      id: 000000-add-column-provider-users
+      author: Gasymov Ruslan
+      changes:
+        - addColumn:
+            tableName: users
+            columns:
+              - column:
+                  name: provider
+                  type: varchar(50)
+                  defaultValue: GOOGLE
+        - addNotNullConstraint:
+            tableName: users
+            columnName: provider
+            columnDataType: varchar(50)

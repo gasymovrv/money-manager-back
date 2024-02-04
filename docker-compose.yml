@@ -1,0 +1,11 @@
+version: '3.1'
+services:
+
+  money-manager-postgres:
+    image: postgres:16.1
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: moneymanagerdb

@@ -1,0 +1,76 @@
+databaseChangeLog:
+
+  - changeSet:
+      id: 000000-create-saving-indexes
+      author: Gasymov Ruslan
+      changes:
+        - createIndex:
+            columns:
+              - column: { name: date }
+            indexName: idx_saving_date
+            tableName: saving
+        - createIndex:
+            columns:
+              - column: { name: account_id }
+            indexName: idx_saving_account_id
+            tableName: saving
+
+  - changeSet:
+      id: 000000-create-income-indexes
+      author: Gasymov Ruslan
+      changes:
+        - createIndex:
+            columns:
+              - column: { name: saving_id }
+            indexName: idx_income_saving_id
+            tableName: income
+        - createIndex:
+            columns:
+              - column: { name: account_id }
+            indexName: idx_income_account_id
+            tableName: income
+        - createIndex:
+            columns:
+              - column: { name: category_id }
+            indexName: idx_income_category_id
+            tableName: income
+
+  - changeSet:
+      id: 000000-create-expense-indexes
+      author: Gasymov Ruslan
+      changes:
+        - createIndex:
+            columns:
+              - column: { name: saving_id }
+            indexName: idx_expense_saving_id
+            tableName: expense
+        - createIndex:
+            columns:
+              - column: { name: account_id }
+            indexName: idx_expense_account_id
+            tableName: expense
+        - createIndex:
+            columns:
+              - column: { name: category_id }
+            indexName: idx_expense_category_id
+            tableName: expense
+
+  - changeSet:
+      id: 000000-create-income-category-indexes
+      author: Gasymov Ruslan
+      changes:
+        - createIndex:
+            columns:
+              - column: { name: account_id }
+            indexName: idx_income_category_account_id
+            tableName: income_category
+
+  - changeSet:
+      id: 000000-create-expense-category-indexes
+      author: Gasymov Ruslan
+      changes:
+        - createIndex:
+            columns:
+              - column: { name: account_id }
+            indexName: idx_expense_category_account_id
+            tableName: expense_category

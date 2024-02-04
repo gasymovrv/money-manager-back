@@ -1,0 +1,76 @@
+databaseChangeLog:
+
+  - changeSet:
+      id: 000000-create-table-income
+      author: Gasymov Ruslan
+      changes:
+        - createTable:
+            tableName: income
+            columns:
+              - column: { name: id, type: bigint }
+              - column: { name: account_id, type: bigint }
+              - column: { name: category_id, type: bigint }
+              - column: { name: saving_id, type: bigint }
+              - column: { name: date, type: date }
+              - column: { name: description, type: varchar(255) }
+              - column: { name: value_, type: "numeric(102, 2)" }
+              - column: { name: is_planned, type: boolean }
+
+  - changeSet:
+      id: 000000-create-constraint-income
+      author: Gasymov Ruslan
+      changes:
+        - addNotNullConstraint:
+            tableName: income
+            columnName: id
+            columnDataType: bigint
+        - addNotNullConstraint:
+            tableName: income
+            columnName: date
+            columnDataType: date
+        - addNotNullConstraint:
+            tableName: income
+            columnName: value_
+            columnDataType: "numeric(102, 2)"
+        - addPrimaryKey:
+            columnNames: id
+            tableName: income
+        - addAutoIncrement:
+            columnName: id
+            columnDataType: bigint
+            tableName: income
+        - addForeignKeyConstraint:
+            baseColumnNames: category_id
+            baseTableName: income
+            constraintName: fk_income_income_category
+            referencedColumnNames: id
+            referencedTableName: income_category
+        - addForeignKeyConstraint:
+            baseColumnNames: saving_id
+            baseTableName: income
+            constraintName: fk_income_saving
+            referencedColumnNames: id
+            referencedTableName: saving
+        - addForeignKeyConstraint:
+            baseColumnNames: account_id
+            baseTableName: income
+            constraintName: fk_income_account
+            referencedColumnNames: id
+            referencedTableName: account
+
+  - changeSet:
+      id: 000001-create-constraint-income
+      author: Gasymov Ruslan
+      changes:
+        - addNotNullConstraint:
+            tableName: income
+            columnName: account_id
+            columnDataType: bigint
+        - addNotNullConstraint:
+            tableName: income
+            columnName: category_id
+            columnDataType: bigint
+        - addNotNullConstraint:
+            tableName: income
+            columnName: saving_id
+            columnDataType: bigint

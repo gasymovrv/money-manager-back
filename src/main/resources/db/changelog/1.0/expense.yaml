@@ -1,0 +1,76 @@
+databaseChangeLog:
+
+  - changeSet:
+      id: 000000-create-table-expense
+      author: Gasymov Ruslan
+      changes:
+        - createTable:
+            tableName: expense
+            columns:
+              - column: { name: id, type: bigint }
+              - column: { name: account_id, type: bigint }
+              - column: { name: category_id, type: bigint }
+              - column: { name: saving_id, type: bigint }
+              - column: { name: date, type: date }
+              - column: { name: description, type: varchar(255) }
+              - column: { name: value_, type: "numeric(102, 2)" }
+              - column: { name: is_planned, type: boolean }
+
+  - changeSet:
+      id: 000000-create-constraint-expense
+      author: Gasymov Ruslan
+      changes:
+        - addNotNullConstraint:
+            tableName: expense
+            columnName: id
+            columnDataType: bigint
+        - addNotNullConstraint:
+            tableName: expense
+            columnName: date
+            columnDataType: date
+        - addNotNullConstraint:
+            tableName: expense
+            columnName: value_
+            columnDataType: "numeric(102, 2)"
+        - addPrimaryKey:
+            columnNames: id
+            tableName: expense
+        - addAutoIncrement:
+            columnName: id
+            columnDataType: bigint
+            tableName: expense
+        - addForeignKeyConstraint:
+            baseColumnNames: category_id
+            baseTableName: expense
+            constraintName: fk_expense_expense_category
+            referencedColumnNames: id
+            referencedTableName: expense_category
+        - addForeignKeyConstraint:
+            baseColumnNames: saving_id
+            baseTableName: expense
+            constraintName: fk_expense_saving
+            referencedColumnNames: id
+            referencedTableName: saving
+        - addForeignKeyConstraint:
+            baseColumnNames: account_id
+            baseTableName: expense
+            constraintName: fk_expense_account
+            referencedColumnNames: id
+            referencedTableName: account
+
+  - changeSet:
+      id: 000001-create-constraint-expense
+      author: Gasymov Ruslan
+      changes:
+        - addNotNullConstraint:
+            tableName: expense
+            columnName: account_id
+            columnDataType: bigint
+        - addNotNullConstraint:
+            tableName: expense
+            columnName: category_id
+            columnDataType: bigint
+        - addNotNullConstraint:
+            tableName: expense
+            columnName: saving_id
+            columnDataType: bigint

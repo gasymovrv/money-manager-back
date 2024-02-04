@@ -1,0 +1,55 @@
+databaseChangeLog:
+
+  - changeSet:
+      id: 000000-create-table-history
+      author: Gasymov Ruslan
+      changes:
+        - createTable:
+            tableName: history
+            columns:
+              - column: { name: id, type: bigint }
+              - column: { name: action_type, type: varchar(255) }
+              - column: { name: operation_type, type: varchar(255) }
+              - column: { name: account_id, type: bigint }
+              - column: { name: old_operation, type: text }
+              - column: { name: new_operation, type: text }
+              - column: { name: modified_at, type: timestamp, defaultValueComputed: now() }
+
+  - changeSet:
+      id: 000000-create-constraint-history
+      author: Gasymov Ruslan
+      changes:
+        - addNotNullConstraint:
+            tableName: history
+            columnName: id
+            columnDataType: bigint
+        - addNotNullConstraint:
+            tableName: history
+            columnName: action_type
+            columnDataType: varchar(255)
+        - addNotNullConstraint:
+            tableName: history
+            columnName: operation_type
+            columnDataType: varchar(255)
+        - addPrimaryKey:
+            columnNames: id
+            tableName: history
+        - addAutoIncrement:
+            columnName: id
+            columnDataType: bigint
+            tableName: history
+        - addForeignKeyConstraint:
+            baseColumnNames: account_id
+            baseTableName: history
+            constraintName: fk_history_account
+            referencedColumnNames: id
+            referencedTableName: account
+
+  - changeSet:
+      id: 000001-create-constraint-history
+      author: Gasymov Ruslan
+      changes:
+        - addNotNullConstraint:
+            tableName: history
+            columnName: account_id
+            columnDataType: bigint

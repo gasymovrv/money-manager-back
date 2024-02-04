@@ -1,0 +1,41 @@
+databaseChangeLog:
+
+  - changeSet:
+      id: 000000-create-table-account
+      author: Gasymov Ruslan
+      changes:
+        - createTable:
+            tableName: account
+            columns:
+              - column: { name: id, type: bigint }
+              - column: { name: name, type: varchar(255) }
+              - column: { name: theme, type: varchar(10) }
+              - column: { name: currency, type: varchar(3) }
+              - column: { name: user_id, type: varchar(255) }
+  - changeSet:
+      id: 000000-create-constraint-account
+      author: Gasymov Ruslan
+      changes:
+        - addNotNullConstraint:
+            tableName: account
+            columnName: id
+            columnDataType: bigint
+        - addPrimaryKey:
+            columnNames: id
+            tableName: account
+        - addAutoIncrement:
+            columnName: id
+            columnDataType: bigint
+            tableName: account
+        - addForeignKeyConstraint:
+            baseColumnNames: user_id
+            baseTableName: account
+            constraintName: fk_account_user
+            referencedColumnNames: id
+            referencedTableName: users
+        - addForeignKeyConstraint:
+            baseColumnNames: current_account_id
+            baseTableName: users
+            constraintName: fk_users_current_account
+            referencedColumnNames: id
+            referencedTableName: account
