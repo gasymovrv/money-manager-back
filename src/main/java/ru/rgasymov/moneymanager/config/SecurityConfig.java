@@ -17,13 +17,11 @@ import org.springframework.security.oauth2.client.endpoint.OAuth2AuthorizationCo
 import org.springframework.security.oauth2.client.http.OAuth2ErrorResponseErrorHandler;
 import org.springframework.security.oauth2.core.http.converter.OAuth2AccessTokenResponseHttpMessageConverter;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import ru.rgasymov.moneymanager.security.RestAuthenticationEntryPoint;
 import ru.rgasymov.moneymanager.security.TokenAuthenticationFilter;
 import ru.rgasymov.moneymanager.security.oauth2.CustomOauth2UserService;
 import ru.rgasymov.moneymanager.security.oauth2.CustomTokenResponseConverter;
@@ -40,8 +38,6 @@ import ru.rgasymov.moneymanager.security.oauth2.Oauth2AuthenticationSuccessHandl
 )
 public class SecurityConfig {
 
-  private static final String BASE_URL = "/";
-
   @Value("${server.api-base-url}")
   private String apiBaseUrl;
 
@@ -57,16 +53,6 @@ public class SecurityConfig {
   private final TokenAuthenticationFilter tokenAuthenticationFilter;
 
   private final HttpCookieOauth2AuthorizationRequestRepository cookieAuthorizationRequestRepository;
-
-  //@Bean
-  //public TokenAuthenticationFilter tokenAuthenticationFilter() {
-  //  return new TokenAuthenticationFilter();
-  //}
-  //
-  //@Bean
-  //public HttpCookieOauth2AuthorizationRequestRepository cookieAuthorizationRequestRepository() {
-  //  return new HttpCookieOauth2AuthorizationRequestRepository();
-  //}
 
   @Bean
   public OAuth2AccessTokenResponseClient<OAuth2AuthorizationCodeGrantRequest>
@@ -105,13 +91,8 @@ public class SecurityConfig {
         .sessionManagement(it -> it.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .formLogin(AbstractHttpConfigurer::disable)
         .httpBasic(AbstractHttpConfigurer::disable)
-        .addFilterBefore(new ErrorFilter(apiBaseUrl), AuthorizationFilter.class)
-        .exceptionHandling(
-            it -> it.authenticationEntryPoint(new RestAuthenticationEntryPoint(apiBaseUrl)))
         .authorizeHttpRequests(it -> it
             .requestMatchers(
-                BASE_URL,
-                "/login",
                 apiBaseUrl + "/version",
                 "/swagger-ui/**",
                 "/v3/api-docs/**",

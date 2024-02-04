@@ -67,11 +67,6 @@ spring:
     multipart:
       max-file-size: ${MAX_UPLOAD_FILE_SIZE:20MB}
       max-request-size: ${MAX_REQUEST_BODY_SIZE:50MB}
-  web:
-    resources:
-      cache:
-        cachecontrol:
-          max-age: 365d
   cache:
     cache-names: incomeCategories, expenseCategories, users
     type: caffeine

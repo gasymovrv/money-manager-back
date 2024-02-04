@@ -4,16 +4,14 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>ru.rgasymov</groupId>
-    <artifactId>money-manager</artifactId>
+    <artifactId>money-manager-back</artifactId>
     <version>${revision}</version>
-    <name>money-manager</name>
+    <name>Money manager backend</name>
     <packaging>jar</packaging>
 
     <properties>
         <revision>1.0.0-SNAPSHOT</revision>
         <java.version>21</java.version>
-        <node.version>v14.16.0</node.version>
-        <npm.version>6.14.11</npm.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <spring-boot.version>3.2.2</spring-boot.version>
@@ -196,6 +194,13 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>${maven-compiler-plugin.version}</version>
+                <configuration>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+                    <compilerArgs>
+                        <arg>-parameters</arg>
+                    </compilerArgs>
+                </configuration>
             </plugin>
 
             <plugin>
@@ -229,33 +234,6 @@
 
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-dependency-plugin</artifactId>
-                <version>${maven-dependency-plugin.version}</version>
-                <executions>
-                    <execution>
-                        <id>copy-artifact</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>copy</goal>
-                        </goals>
-                        <configuration>
-                            <artifactItems>
-                                <artifactItem>
-                                    <groupId>${project.groupId}</groupId>
-                                    <artifactId>${project.artifactId}</artifactId>
-                                    <version>${project.version}</version>
-                                    <type>${project.packaging}</type>
-                                    <destFileName>${project.parent.artifactId}-${project.version}.jar</destFileName>
-                                </artifactItem>
-                            </artifactItems>
-                            <outputDirectory>../target</outputDirectory>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-antrun-plugin</artifactId>
                 <version>${maven-antrun-plugin.version}</version>
                 <executions>
@@ -263,7 +241,7 @@
                         <phase>install</phase>
                         <configuration>
                             <target>
-                                <copy file="../../.env" todir="../../target"/>
+                                <copy file=".env" todir="target"/>
                             </target>
                         </configuration>
                         <goals>
