@@ -14,6 +14,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
+/**
+ * Creates and validates a token for the given authentication.
+ * By default, google client-secret is used to sign tokens.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor

@@ -30,12 +30,20 @@ public final class CookieUtils {
   public static void addCookie(HttpServletResponse response,
                                String name,
                                String value,
-                               int maxAge) {
+                               Integer maxAge) {
     Cookie cookie = new Cookie(name, value);
     cookie.setPath("/");
     cookie.setHttpOnly(true);
-    cookie.setMaxAge(maxAge);
+    if (maxAge != null) {
+      cookie.setMaxAge(maxAge);
+    }
     response.addCookie(cookie);
+  }
+
+  public static void addCookie(HttpServletResponse response,
+                               String name,
+                               String value) {
+    addCookie(response, name, value, null);
   }
 
   public static void deleteCookie(HttpServletRequest request,

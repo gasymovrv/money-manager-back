@@ -49,8 +49,8 @@ spring:
             client-id: ${VK_CLIENT_ID:client-id}
             client-secret: ${VK_CLIENT_SECRET:client-id}
             redirect-uri: "{baseUrl}/oauth2/callback/{registrationId}"
-            #use post, as vk needs clientId and clientSecret as request params and does not accepts Basic auth
-            client-authentication-method: post
+            #use post, as vk needs clientId and clientSecret as request params and does not accept Basic auth
+            client-authentication-method: client_secret_post
             authorization-grant-type: authorization_code
             scope: email
         provider:
@@ -97,6 +97,6 @@ xlsx:
   show-empty-rows: ${SHOW_EMPTY_ROWS:true} # Add empty savings in the exported xlsx to fill months
 
 security:
-  token-secret: ${GOOGLE_CLIENT_SECRET:client-secret}
+  token-secret: ${TOKEN_SECRET:${GOOGLE_CLIENT_SECRET:client-secret}}
   token-expiration-period: ${TOKEN_EXPIRATION_PERIOD:60m}
   allowed-origins: ${ALLOWED_ORIGINS:http://localhost:3000, http://localhost:8080}

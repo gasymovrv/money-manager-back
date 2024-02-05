@@ -22,6 +22,7 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import ru.rgasymov.moneymanager.security.RestAuthenticationEntryPoint;
 import ru.rgasymov.moneymanager.security.TokenAuthenticationFilter;
 import ru.rgasymov.moneymanager.security.oauth2.CustomOauth2UserService;
 import ru.rgasymov.moneymanager.security.oauth2.CustomTokenResponseConverter;
@@ -86,11 +87,7 @@ public class SecurityConfig {
   @Bean
   public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     http
-        .cors(AbstractHttpConfigurer::disable)
-        .csrf(AbstractHttpConfigurer::disable)
-        .sessionManagement(it -> it.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-        .formLogin(AbstractHttpConfigurer::disable)
-        .httpBasic(AbstractHttpConfigurer::disable)
+        .exceptionHandling(it -> it.authenticationEntryPoint(new RestAuthenticationEntryPoint()))
         .authorizeHttpRequests(it -> it
             .requestMatchers(
                 apiBaseUrl + "/version",
@@ -112,7 +109,13 @@ public class SecurityConfig {
 
             .successHandler(authenticationSuccessHandler)
             .failureHandler(authenticationFailureHandler)
-        );
+        )
+
+        .cors(AbstractHttpConfigurer::disable)
+        .csrf(AbstractHttpConfigurer::disable)
+        .sessionManagement(it -> it.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .formLogin(AbstractHttpConfigurer::disable)
+        .httpBasic(AbstractHttpConfigurer::disable);
 
     // Add our custom Token based authentication filter
     http.addFilterBefore(tokenAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

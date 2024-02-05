@@ -1,38 +1,34 @@
-# Money-Manager
+# Money-Manager (backend)
 The main purpose of the application is to manage income, expenses and savings. 
-[Demo](https://gasymovrv-money-manager.herokuapp.com/)
 
-## Backend
-+ Java 17, Spring Boot 2.6.2
-+ OAuth2 authentication with Google or VKontakte by JWT
-+ Application has made as a stateless RESTful API
-+ Built frontend is in jar resources, single html page will be opened by Spring MVC (spring-boot-starter-web)
-+ There are 2 mode:
-  + server app - deployable from GitHub application, user data stores in dedicated postgresql database
-  + desktop app - installable Windows application, user data stores in the H2 database that in the installed directory
+User data stores in PostgreSQL database
 
-## Frontend
-+ TypeScript, React 17.0.2, Material-UI 4.11.1, Redux
-+ No class components, only functional ones with React Hooks
-+ Using Material-UI components for styling
-+ Using Redux to store global state in memory and some custom UI configurations in local storage
++ Java 21
++ Spring Boot 3.2.2
++ PostgreSQL 16.1
+
+### Security:
+OAuth2 authentication with Google or VKontakte by JWT
+
+Implemented by regular spring-boot-starter-oauth2-client but customized to remove sessions and make the application stateless RESTful API with JWT token
+
+Schema:
++ Frontend requests the backend API like this: http://localhost:8080/oauth2/authorize/google?redirect_uri=http://localhost:3000/oauth2/redirect
++ Backend redirects frontend to chosen provider (Google or VK) login page with specific provider credentials (client_id, secret_id, etc.) and redirect param which provider will use to send response to the backend. Example with Google:
+  + https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=CLIENT_ID&scope=email+profile&state=STATE&redirect_uri=http://localhost:8080/oauth2/callback/google
++ User sees his login page, accept authentication of our app or not
++ Backend handles response from provider on http://localhost:8080/oauth2/callback/PROVIDER
+  + if it is successfully authenticated then redirects back to the frontend with new JWT token like this: http://localhost:3000/oauth2/redirect?token=TOKEN. [Oauth2AuthenticationSuccessHandler](src/main/java/ru/rgasymov/moneymanager/security/oauth2/Oauth2AuthenticationSuccessHandler.java)
+  + If it is failed then like this: http://localhost:3000/oauth2/redirect?error=error. [Oauth2AuthenticationFailureHandler](src/main/java/ru/rgasymov/moneymanager/security/oauth2/Oauth2AuthenticationFailureHandler.java)
+
+See details in [HttpCookieOauth2AuthorizationRequestRepository.java](src/main/java/ru/rgasymov/moneymanager/security/oauth2/HttpCookieOauth2AuthorizationRequestRepository.java)
 
 ## Instructions
 ### Build and run
-+ Change GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env (or as environment variables) to actual
-+ For local build you need Java 17, Maven 3+. NodeJS v14.16.0 and NPM 6.14.11 are only needed for frontend developing
-+ Call `mvn clean install` at root of the project to build the application. `-Drevision=1.0.0` can be added to change the version of the project
-+ Built result (jar file) will be in 'target' directory at root of the project
++ Run PostgreSQL by [docker-compose.yml](docker-compose.yml)
++ Change GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET and other credentials in .env (or as environment variables) to actual
++ Call `mvn clean package` at root of the project to build the application. `-Drevision=1.0.0` can be added to change the version of the project
++ Built result (jar file) will be in 'target' directory at the root of the project
 + Call `java -Duser.timezone=UTC -jar money-manager-<version>.jar` to start the application
-+ Optionally. It is possibly to build exe installer for Windows (desktop mode), just run pack_exe_installer.bat after maven build. Before generating the jar file, all required environment variables must be in the .env file
-+ Optionally. Call `npm start` at frontend directory to start frontend dev server
 
-### Switch to PostgreSQL
-Instead of H2 database, you can switch to PostgreSQL. To do this, run the application with the following env variables (specify your PostgreSQL credentials):
-```
-USE_POSTGRES=true
-SPRING_DATASOURCE_URL="jdbc:postgresql://localhost:5432/moneymanagerdb"
-SPRING_DATASOURCE_USERNAME=postgres
-SPRING_DATASOURCE_PASSWORD=password
-```
 
