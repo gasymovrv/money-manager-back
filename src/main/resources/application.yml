@@ -22,13 +22,10 @@ spring:
     time-zone: UTC
     date-format: yyyy-MM-dd HH:mm:ss
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:h2:file:./database/money-manager-db;AUTO_SERVER=TRUE}
-    driverClassName: org.h2.Driver
-    username: ${SPRING_DATASOURCE_USERNAME:sa}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/moneymanagerdb}
+    driverClassName: org.postgresql.Driver
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
     password: ${SPRING_DATASOURCE_PASSWORD:password}
-  h2:
-    console:
-      enabled: false
   jpa:
     hibernate:
       ddl-auto: validate
@@ -94,8 +91,6 @@ logging:
 file-service:
   root: ${FILE_STORAGE_ROOT:uploaded-files}
   delete-import-files: ${DELETE_IMPORT_FILES:true}
-
-use-postgres: ${USE_POSTGRES:false}
 
 xlsx:
   max-exported-rows: ${MAX_EXPORTED_ROWS:1000000}

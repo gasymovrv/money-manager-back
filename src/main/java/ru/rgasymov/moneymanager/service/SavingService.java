@@ -130,6 +130,17 @@ public class SavingService {
     });
   }
 
+  /**
+   * It retrieves the current user and account,
+   * then updates or creates a saving based on the input date and value.
+   * Finally, it recalculates the value of other savings.
+   *
+   * @param date                  The date of the saving (can be new or existing)
+   * @param value                 The value of the saving
+   * @param setValueFunc          The function that sets the value of the saving
+   *                              based on the input value
+   * @param recalculateOthersFunc The function that recalculates the value of other savings
+   */
   private void recalculate(LocalDate date,
                            BigDecimal value,
                            BiFunction<BigDecimal, BigDecimal, BigDecimal> setValueFunc,

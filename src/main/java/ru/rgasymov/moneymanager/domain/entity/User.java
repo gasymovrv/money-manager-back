@@ -7,7 +7,6 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.Lob;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import java.io.Serial;
@@ -38,7 +37,6 @@ public class User implements Serializable {
   @ToString.Include
   private String name;
 
-  @Lob
   @Column
   private String picture;
 

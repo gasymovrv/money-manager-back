@@ -1,5 +1,7 @@
 spring:
   datasource:
-    url: jdbc:h2:mem:testdb
+    username: ${POSTGRES_USERNAME}
+    password: ${POSTGRES_PASSWORD}
+    url: ${JDBC_URL}
 
 logging.file.name:
