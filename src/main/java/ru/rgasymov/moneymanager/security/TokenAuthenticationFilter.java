@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -31,7 +32,7 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
     try {
       var jwt = getJwtFromRequest(request);
 
-      if (StringUtils.hasText(jwt) && tokenProvider.validateToken(jwt)) {
+      if (jwt != null) {
         var userId = tokenProvider.getUserIdFromToken(jwt);
         var userDetails = userService.loadUserByIdAsUserDetails(userId);
         var authentication = new UsernamePasswordAuthenticationToken(userDetails, null,
@@ -47,11 +48,12 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
     filterChain.doFilter(request, response);
   }
 
-  private String getJwtFromRequest(HttpServletRequest request) {
+  private Jwt getJwtFromRequest(HttpServletRequest request) {
     var bearerToken = request.getHeader("Authorization");
     if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
-      return bearerToken.substring(7);
+      return tokenProvider.parseToken(bearerToken.substring(7));
     }
+    log.error("Bearer token not found in request headers");
     return null;
   }
 }

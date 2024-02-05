@@ -1,73 +1,82 @@
 package ru.rgasymov.moneymanager.security;
 
-import io.jsonwebtoken.ExpiredJwtException;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.MalformedJwtException;
-import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.SignatureException;
-import io.jsonwebtoken.UnsupportedJwtException;
+import com.nimbusds.jose.jwk.source.ImmutableSecret;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.Date;
-import lombok.RequiredArgsConstructor;
+import java.time.Instant;
+import javax.crypto.spec.SecretKeySpec;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.JwsHeader;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtClaimNames;
+import org.springframework.security.oauth2.jwt.JwtClaimsSet;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
+import org.springframework.security.oauth2.jwt.JwtException;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.stereotype.Service;
 
 /**
- * Creates and validates a token for the given authentication.
+ * Creates and parses a token for the given authentication.
  * By default, google client-secret is used to sign tokens.
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class TokenProvider {
 
-  @Value("${security.token-secret}")
-  private String tokenSecret;
+  public TokenProvider(
+      @Value("${security.token-secret}") String tokenSecret,
+      @Value("${security.token-expiration-period}") Duration tokenExpirationPeriod
+  ) {
+    this.tokenExpirationPeriod = tokenExpirationPeriod;
+    encoder = new NimbusJwtEncoder(
+        new ImmutableSecret<>(tokenSecret.getBytes(StandardCharsets.UTF_8)));
+    decoder = NimbusJwtDecoder.withSecretKey(
+        new SecretKeySpec(
+            tokenSecret.getBytes(StandardCharsets.UTF_8),
+            MacAlgorithm.HS256.name()
+        )
+    ).build();
+  }
 
-  @Value("${security.token-expiration-period}")
-  private Duration tokenExpirationPeriod;
+  private final Duration tokenExpirationPeriod;
+  private final JwtEncoder encoder;
+  private final JwtDecoder decoder;
 
   public String createToken(Authentication authentication) {
     var userPrincipal = (UserPrincipal) authentication.getPrincipal();
 
-    var now = new Date();
-    var expiryDate = new Date(now.getTime() + tokenExpirationPeriod.toMillis());
+    var now = Instant.now();
+    var expiryDate = now.plus(tokenExpirationPeriod);
 
-    return Jwts.builder()
-        .setSubject((userPrincipal.getBusinessUser().getId()))
-        .setIssuedAt(new Date())
-        .setExpiration(expiryDate)
-        .signWith(SignatureAlgorithm.HS512, tokenSecret)
-        .compact();
+    var claims = JwtClaimsSet.builder()
+        .claim(JwtClaimNames.SUB, userPrincipal.getBusinessUser().getId())
+        .claim(JwtClaimNames.IAT, Instant.now())
+        .claim(JwtClaimNames.EXP, expiryDate);
+
+    return encoder.encode(
+        JwtEncoderParameters.from(
+            JwsHeader.with(MacAlgorithm.HS256).build(),
+            claims.build()
+        )
+    ).getTokenValue();
   }
 
-  public String getUserIdFromToken(String token) {
-    var claims = Jwts.parser()
-        .setSigningKey(tokenSecret)
-        .parseClaimsJws(token)
-        .getBody();
-
-    return claims.getSubject();
+  public String getUserIdFromToken(Jwt token) {
+    return token.getClaim(JwtClaimNames.SUB);
   }
 
-  public boolean validateToken(String token) {
+  public Jwt parseToken(String token) {
     try {
-      Jwts.parser().setSigningKey(tokenSecret).parseClaimsJws(token);
-      return true;
-    } catch (SignatureException ex) {
-      log.error("Invalid JWT signature");
-    } catch (MalformedJwtException ex) {
-      log.error("Invalid JWT token");
-    } catch (ExpiredJwtException ex) {
-      log.error("Expired JWT token");
-    } catch (UnsupportedJwtException ex) {
-      log.error("Unsupported JWT token");
-    } catch (IllegalArgumentException ex) {
-      log.error("JWT claims string is empty.");
+      return decoder.decode(token);
+    } catch (JwtException ex) {
+      log.error("Invalid JWT token", ex);
+      throw ex;
     }
-    return false;
   }
-
 }
