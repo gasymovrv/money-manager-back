@@ -1,20 +1,24 @@
 # Money-Manager (backend)
 The main purpose of the application is to manage income, expenses and savings. 
 
-User data stores in PostgreSQL database
+It is a stateless backend REST API with oAuth2 authorization.
 
+User data stores in PostgreSQL database.
+
+Core technologies:
 + Java 21
 + Spring Boot 3.2.2
 + PostgreSQL 16.1
++ Maven
 
-### Security:
-OAuth2 authentication with Google or VKontakte by JWT
+### Security
+OAuth2 authentication through Google or VKontakte
 
-Implemented by regular spring-boot-starter-oauth2-client but customized to remove sessions and make the application stateless RESTful API with JWT token
+Implemented by spring-boot-starter-oauth2-client but customized to remove sessions and make the application stateless RESTful API with JWT token
 
 Schema:
-+ Frontend requests the backend API like this: http://localhost:8080/oauth2/authorize/google?redirect_uri=http://localhost:3000/oauth2/redirect
-+ Backend redirects frontend to chosen provider (Google or VK) login page with specific provider credentials (client_id, secret_id, etc.) and redirect param which provider will use to send response to the backend. Example with Google:
++ Frontend requests this backend API like this: http://localhost:8080/oauth2/authorize/google?redirect_uri=http://localhost:3000/oauth2/redirect
++ Backend redirects frontend to chosen provider (Google or VK) login page with specific provider credentials (client_id, client_secret, etc.) and redirect_uri param which provider will use to send response to the backend. Example with Google:
   + https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=CLIENT_ID&scope=email+profile&state=STATE&redirect_uri=http://localhost:8080/oauth2/callback/google
 + User sees his login page, accept authentication of our app or not
 + Backend handles response from provider on http://localhost:8080/oauth2/callback/PROVIDER

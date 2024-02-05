@@ -12,6 +12,15 @@ import org.springframework.security.web.AuthenticationEntryPoint;
 @RequiredArgsConstructor
 public class RestAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
+  /**
+   * Spring invokes this method when authentication fails.
+   * Without this method, redirecting to login page would always happen after login fails.
+   *
+   * @param request that resulted in an <code>AuthenticationException</code>
+   * @param response so that the user agent can begin authentication
+   * @param authException that caused the invocation
+   * @throws IOException in case of an error
+   */
   @Override
   public void commence(HttpServletRequest request, HttpServletResponse response,
                        AuthenticationException authException) throws IOException {

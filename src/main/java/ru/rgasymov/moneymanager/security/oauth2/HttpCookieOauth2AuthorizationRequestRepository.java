@@ -21,7 +21,7 @@ public class HttpCookieOauth2AuthorizationRequestRepository
   private static final int authCookieExpireSeconds = 180;
 
   /**
-   * Spring invokes it on redirectionEndpoint
+   * Spring invokes it on redirectionEndpoint.
    * (/oauth2/callback/*, see {@link ru.rgasymov.moneymanager.config.SecurityConfig#securityFilterChain})
    * with built {@link OAuth2AuthorizationRequest}
    *
@@ -35,7 +35,7 @@ public class HttpCookieOauth2AuthorizationRequestRepository
   }
 
   /**
-   * Spring invokes it on authorizationEndpoint
+   * Spring invokes it on authorizationEndpoint.
    * (/oauth2/authorize/PROVIDER, see {@link ru.rgasymov.moneymanager.config.SecurityConfig#securityFilterChain})
    * with built {@link OAuth2AuthorizationRequest}
    * Method saves OAuth2AuthorizationRequest in a cookie before redirect to the provider.
