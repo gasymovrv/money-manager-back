@@ -14,4 +14,5 @@ public record ErrorDto(
 
     @JsonProperty
     String message
-) {}
+) {
+}

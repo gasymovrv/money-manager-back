@@ -29,6 +29,10 @@ import org.springframework.stereotype.Service;
 @Service
 public class TokenProvider {
 
+  private final Duration tokenExpirationPeriod;
+  private final JwtEncoder encoder;
+  private final JwtDecoder decoder;
+
   public TokenProvider(
       @Value("${security.token-secret}") String tokenSecret,
       @Value("${security.token-expiration-period}") Duration tokenExpirationPeriod
@@ -43,10 +47,6 @@ public class TokenProvider {
         )
     ).build();
   }
-
-  private final Duration tokenExpirationPeriod;
-  private final JwtEncoder encoder;
-  private final JwtDecoder decoder;
 
   public String createToken(Authentication authentication) {
     var userPrincipal = (UserPrincipal) authentication.getPrincipal();

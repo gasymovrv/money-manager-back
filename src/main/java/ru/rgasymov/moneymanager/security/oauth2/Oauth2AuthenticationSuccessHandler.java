@@ -9,11 +9,12 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
-import ru.rgasymov.moneymanager.exception.BadRequestException;
+import ru.rgasymov.moneymanager.exception.NotAllowedRedirectUriException;
 import ru.rgasymov.moneymanager.security.TokenProvider;
 import ru.rgasymov.moneymanager.util.CookieUtils;
 
@@ -22,19 +23,23 @@ import ru.rgasymov.moneymanager.util.CookieUtils;
 @RequiredArgsConstructor
 public class Oauth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
-  @Value("${security.allowed-origins}")
-  private List<String> authorizedRedirectHosts;
-
   private final TokenProvider tokenProvider;
-
   private final HttpCookieOauth2AuthorizationRequestRepository
       httpCookieOauth2AuthorizationRequestRepository;
+  @Value("${security.allowed-origins}")
+  private List<String> authorizedRedirectHosts;
 
   @Override
   public void onAuthenticationSuccess(HttpServletRequest request,
                                       HttpServletResponse response,
                                       Authentication authentication) throws IOException {
-    var targetUrl = determineTargetUrl(request, response, authentication);
+    String targetUrl;
+    try {
+      targetUrl = determineTargetUrl(request, response, authentication);
+    } catch (NotAllowedRedirectUriException e) {
+      response.sendError(HttpStatus.FORBIDDEN.value(), e.getMessage());
+      return;
+    }
 
     if (response.isCommitted()) {
       log.debug("Response has already been committed. Unable to redirect to " + targetUrl);
@@ -53,7 +58,7 @@ public class Oauth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         .map(Cookie::getValue);
 
     if (redirectUri.isPresent() && !isAuthorizedRedirectUri(redirectUri.get())) {
-      throw new BadRequestException(
+      throw new NotAllowedRedirectUriException(
           "Got an Unauthorized Redirect URI and can't proceed with the authentication");
     }
     var token = tokenProvider.createToken(authentication);

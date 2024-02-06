@@ -14,6 +14,7 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
+import ru.rgasymov.moneymanager.exception.UserNotFoundException;
 import ru.rgasymov.moneymanager.service.UserService;
 
 @Component
@@ -41,6 +42,8 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
       }
+    } catch (UserNotFoundException ex) {
+      log.error("User not found in database", ex);
     } catch (Exception ex) {
       log.error("Could not set user authentication in security context", ex);
     }
@@ -53,7 +56,7 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
     if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
       return tokenProvider.parseToken(bearerToken.substring(7));
     }
-    log.error("Bearer token not found in request headers");
+    log.info("Bearer token not found in request headers: {}", request.getRequestURI());
     return null;
   }
 }

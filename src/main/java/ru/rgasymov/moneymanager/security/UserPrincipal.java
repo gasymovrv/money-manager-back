@@ -13,12 +13,10 @@ import ru.rgasymov.moneymanager.domain.entity.User;
 
 public class UserPrincipal implements OAuth2User, UserDetails {
 
+  private final Collection<? extends GrantedAuthority> authorities;
   @Getter
   @Setter
   private User businessUser;
-
-  private final Collection<? extends GrantedAuthority> authorities;
-
   private Map<String, Object> attributes;
 
   public UserPrincipal(User user,

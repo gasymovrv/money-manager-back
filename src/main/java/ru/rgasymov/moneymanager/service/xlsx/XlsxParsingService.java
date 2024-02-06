@@ -6,7 +6,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoField;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -284,7 +283,7 @@ public class XlsxParsingService {
           Optional<LocalDate> minDate = dates.stream().min(LocalDate::compareTo);
           if (minDate.isPresent()) {
             result.setPreviousSavingsDate(
-                LocalDate.of(minDate.get().get(ChronoField.YEAR), 1, 1));
+                LocalDate.of(minDate.get().getYear(), 1, 1));
           } else {
             result.setPreviousSavingsDate(LocalDate.of(1970, 1, 1));
           }

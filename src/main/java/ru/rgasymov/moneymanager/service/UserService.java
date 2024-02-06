@@ -12,7 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.rgasymov.moneymanager.constant.CacheNames;
 import ru.rgasymov.moneymanager.domain.dto.response.UserResponseDto;
 import ru.rgasymov.moneymanager.domain.entity.User;
-import ru.rgasymov.moneymanager.exception.ResourceNotFoundException;
+import ru.rgasymov.moneymanager.exception.UserNotFoundException;
 import ru.rgasymov.moneymanager.mapper.UserMapper;
 import ru.rgasymov.moneymanager.repository.ExpenseCategoryRepository;
 import ru.rgasymov.moneymanager.repository.IncomeCategoryRepository;
@@ -69,8 +69,6 @@ public class UserService {
   }
 
   private User getUser(String id) {
-    return userRepository.findById(id).orElseThrow(
-        () -> new ResourceNotFoundException("User", "id", id)
-    );
+    return userRepository.findById(id).orElseThrow(() -> new UserNotFoundException(id));
   }
 }

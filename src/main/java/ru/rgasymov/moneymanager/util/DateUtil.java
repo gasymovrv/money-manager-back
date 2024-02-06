@@ -1,7 +1,6 @@
 package ru.rgasymov.moneymanager.util;
 
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 public final class DateUtil {
@@ -10,7 +9,7 @@ public final class DateUtil {
   }
 
   public static List<LocalDate> getDatesBetweenInclusive(LocalDate startDate, LocalDate endDate) {
-    return startDate.datesUntil(endDate.plus(1, ChronoUnit.DAYS)).toList();
+    return startDate.datesUntil(endDate.plusDays(1)).toList();
   }
 
   public static LocalDate getFirstDateOfMonth(LocalDate date) {

@@ -39,25 +39,18 @@ import ru.rgasymov.moneymanager.security.oauth2.Oauth2AuthenticationSuccessHandl
 )
 public class SecurityConfig {
 
+  private final CustomOauth2UserService customOauth2UserService;
+  private final Oauth2AuthenticationSuccessHandler authenticationSuccessHandler;
+  private final Oauth2AuthenticationFailureHandler authenticationFailureHandler;
+  private final TokenAuthenticationFilter tokenAuthenticationFilter;
+  private final HttpCookieOauth2AuthorizationRequestRepository cookieAuthorizationRequestRepository;
   @Value("${server.api-base-url}")
   private String apiBaseUrl;
-
   @Value("${security.allowed-origins}")
   private List<String> allowedOrigins;
 
-  private final CustomOauth2UserService customOauth2UserService;
-
-  private final Oauth2AuthenticationSuccessHandler authenticationSuccessHandler;
-
-  private final Oauth2AuthenticationFailureHandler authenticationFailureHandler;
-
-  private final TokenAuthenticationFilter tokenAuthenticationFilter;
-
-  private final HttpCookieOauth2AuthorizationRequestRepository cookieAuthorizationRequestRepository;
-
   @Bean
-  public OAuth2AccessTokenResponseClient<OAuth2AuthorizationCodeGrantRequest>
-      accessTokenResponseClient() {
+  public OAuth2AccessTokenResponseClient<OAuth2AuthorizationCodeGrantRequest> accessTokenResponseClient() {
     var tokenResponseHttpMessageConverter = new OAuth2AccessTokenResponseHttpMessageConverter();
     tokenResponseHttpMessageConverter
         .setAccessTokenResponseConverter(new CustomTokenResponseConverter());
@@ -76,7 +69,6 @@ public class SecurityConfig {
     final var configuration = new CorsConfiguration();
     configuration.setAllowedOrigins(allowedOrigins);
     configuration.setAllowedMethods(List.of("HEAD", "GET", "POST", "PUT", "DELETE", "PATCH"));
-    configuration.setAllowCredentials(true);
     configuration.setAllowedHeaders(List.of("Authorization", "Cache-Control", "Content-Type"));
 
     final var source = new UrlBasedCorsConfigurationSource();
@@ -111,7 +103,7 @@ public class SecurityConfig {
             .failureHandler(authenticationFailureHandler)
         )
 
-        .cors(AbstractHttpConfigurer::disable)
+        .cors(it -> corsConfigurationSource())
         .csrf(AbstractHttpConfigurer::disable)
         .sessionManagement(it -> it.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .formLogin(AbstractHttpConfigurer::disable)

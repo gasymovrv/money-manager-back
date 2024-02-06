@@ -14,12 +14,12 @@ import ru.rgasymov.moneymanager.domain.entity.IncomeCategory;
 @Data
 @RequiredArgsConstructor
 public class FileImportResult {
-  private BigDecimal previousSavings;
-  private LocalDate previousSavingsDate;
   private final List<Income> incomes;
   private final List<Expense> expenses;
   private final Set<IncomeCategory> incomeCategories;
   private final Set<ExpenseCategory> expenseCategories;
+  private BigDecimal previousSavings;
+  private LocalDate previousSavingsDate;
 
   public void add(FileImportResult result) {
     incomes.addAll(result.incomes);

@@ -8,7 +8,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.temporal.ChronoField;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -91,7 +90,7 @@ public class XlsxGenerationService {
       //------- Create sheets -------
       var savingsMap = data.savings()
           .stream()
-          .collect(Collectors.groupingBy(item -> item.getDate().get(ChronoField.YEAR)));
+          .collect(Collectors.groupingBy(item -> item.getDate().getYear()));
 
       var lastYearSaving = BigDecimal.ZERO;
       for (var entry : savingsMap.entrySet()) {

@@ -28,8 +28,8 @@ public final class TokenUtils {
   }
 
   public static long getParameterValue(Map<String, Object> tokenResponseParameters,
-                                        String parameterName,
-                                        long defaultValue) {
+                                       String parameterName,
+                                       long defaultValue) {
     var parameterValue = defaultValue;
 
     var obj = tokenResponseParameters.get(parameterName);
@@ -53,7 +53,7 @@ public final class TokenUtils {
   }
 
   public static String getParameterValue(Map<String, Object> tokenResponseParameters,
-                                          String parameterName) {
+                                         String parameterName) {
     Object obj = tokenResponseParameters.get(parameterName);
     return (obj != null) ? obj.toString() : null;
   }

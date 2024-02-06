@@ -4,7 +4,7 @@ server:
   api-base-url: /api
   error:
     whitelabel:
-      enabled: false
+      enabled: true
   port: ${PORT:8080}
 
 spring:
@@ -97,6 +97,6 @@ xlsx:
   show-empty-rows: ${SHOW_EMPTY_ROWS:true} # Add empty savings in the exported xlsx to fill months
 
 security:
-  token-secret: ${TOKEN_SECRET:${GOOGLE_CLIENT_SECRET:client-secret}}
+  token-secret: ${TOKEN_SECRET:${GOOGLE_CLIENT_SECRET:token-secret}}
   token-expiration-period: ${TOKEN_EXPIRATION_PERIOD:60m}
-  allowed-origins: ${ALLOWED_ORIGINS:http://localhost:3000, http://localhost:8080}
+  allowed-origins: ${ALLOWED_ORIGINS:http://localhost:3000}
