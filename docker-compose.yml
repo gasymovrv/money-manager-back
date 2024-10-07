@@ -1,11 +1,57 @@
-version: '3.1'
 services:
+
+  money-manager-backend:
+    image: money-manager-backend:${VERSION}
+    build:
+      pull: false
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: 8080
+      SPRING_DATASOURCE_URL: jdbc:postgresql://money-manager-postgres:5432/moneymanagerdb
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: password
+      ALLOWED_ORIGINS: http://money-manager-frontend:80,http://localhost:9000,http://localhost:8080
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      VK_CLIENT_ID: ${VK_CLIENT_ID}
+      VK_CLIENT_SECRET: ${VK_CLIENT_SECRET}
+      TOKEN_EXPIRATION_PERIOD: 30d
+    networks:
+      - money-manager-network
+
+  money-manager-frontend:
+    image: money-manager-frontend:${VERSION}
+    build:
+      pull: false
+      context: ../money-manager-front
+      dockerfile: Dockerfile
+      args:
+        NODE_ENV: production
+        REACT_APP_BACKEND_HOST: http://localhost:8080
+        GENERATE_SOURCEMAP: false
+    ports:
+      - "9000:80"
+    networks:
+      - money-manager-network
 
   money-manager-postgres:
     image: postgres:16.1
     ports:
-      - "5432:5432"
+      - "5532:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
       POSTGRES_DB: moneymanagerdb
+    networks:
+      - money-manager-network
+
+volumes:
+  money-manager-postgres:
+    driver: local
+
+networks:
+  money-manager-network:
+    driver: bridge
