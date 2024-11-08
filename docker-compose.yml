@@ -1,3 +1,7 @@
+# Whenever you release new versions of services, change env or Dockerfile
+# you must start containers with rebuilding docker images by the command:
+# docker-compose up --build -d
+
 services:
 
   money-manager-backend:
@@ -7,13 +11,13 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "8080:8080"
+      - "8081:8081"
     environment:
-      PORT: 8080
+      PORT: 8081
       SPRING_DATASOURCE_URL: jdbc:postgresql://money-manager-postgres:5432/moneymanagerdb
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: password
-      ALLOWED_ORIGINS: http://money-manager-frontend:80,http://localhost:9000,http://localhost:8080
+      ALLOWED_ORIGINS: http://localhost:9001,http://localhost:8081
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       VK_CLIENT_ID: ${VK_CLIENT_ID}
@@ -30,10 +34,10 @@ services:
       dockerfile: Dockerfile
       args:
         NODE_ENV: production
-        REACT_APP_BACKEND_HOST: http://localhost:8080
+        REACT_APP_BACKEND_HOST: http://localhost:8081
         GENERATE_SOURCEMAP: false
     ports:
-      - "9000:80"
+      - "9001:80"
     networks:
       - money-manager-network
 
