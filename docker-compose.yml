@@ -51,9 +51,11 @@ services:
       POSTGRES_DB: moneymanagerdb
     networks:
       - money-manager-network
+    volumes:
+      - money-manager-postgres-data:/var/lib/postgresql/data
 
 volumes:
-  money-manager-postgres:
+  money-manager-postgres-data:
     driver: local
 
 networks:
