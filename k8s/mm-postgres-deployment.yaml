@@ -24,17 +24,17 @@ spec:
         - name: POSTGRES_USER
           valueFrom:
             secretKeyRef:
-              name: mm-postgres-secret
+              name: mm-secrets
               key: postgres-user
         - name: POSTGRES_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: mm-postgres-secret
+              name: mm-secrets
               key: postgres-password
         - name: POSTGRES_DB
           valueFrom:
             secretKeyRef:
-              name: mm-postgres-secret
+              name: mm-secrets
               key: postgres-db
 
 ---
@@ -46,6 +46,6 @@ spec:
   selector:
     app: mm-postgres
   ports:
-    - protocol: TCP
-      port: 5432 # Service port accessible from outside
-      targetPort: 5432 # Container port
+  - protocol: TCP
+    port: 5432 # Service port accessible from outside
+    targetPort: 5432 # Container port
