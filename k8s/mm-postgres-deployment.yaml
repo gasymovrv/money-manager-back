@@ -18,3 +18,21 @@ spec:
       - image: postgres:16.1
         imagePullPolicy: IfNotPresent
         name: money-manager-postgres
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: mm-postgres-secret
+              key: postgres-user
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mm-postgres-secret
+              key: postgres-password
+        - name: POSTGRES_DB
+          valueFrom:
+            secretKeyRef:
+              name: mm-postgres-secret
+              key: postgres-db
