@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mm-backend-deployment
+  labels:
+    app: mm-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mm-backend
+  template:
+    metadata:
+      labels:
+        app: mm-backend
+    spec:
+      containers:
+      - image: money-manager-backend:1.1.0
+        imagePullPolicy: IfNotPresent
+        name: money-manager-backend

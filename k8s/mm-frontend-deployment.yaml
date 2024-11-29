@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mm-frontend-deployment
+  labels:
+    app: mm-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mm-frontend
+  template:
+    metadata:
+      labels:
+        app: mm-frontend
+    spec:
+      containers:
+      - image: money-manager-frontend:1.1.0
+        imagePullPolicy: IfNotPresent
+        name: money-manager-frontend
