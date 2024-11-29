@@ -36,3 +36,16 @@ spec:
             secretKeyRef:
               name: mm-postgres-secret
               key: postgres-db
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mm-postgres-service
+spec:
+  selector:
+    app: mm-postgres
+  ports:
+    - protocol: TCP
+      port: 5432 # Service port accessible from outside
+      targetPort: 5432 # Container port
