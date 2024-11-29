@@ -19,10 +19,10 @@ spec:
         imagePullPolicy: IfNotPresent
         name: money-manager-backend
         ports:
-        - containerPort: 8081
+        - containerPort: 8080
         env:
         - name: PORT
-          value: "8081"
+          value: "8080"
         - name: SPRING_DATASOURCE_USERNAME
           valueFrom:
             secretKeyRef:
@@ -45,3 +45,17 @@ spec:
               key: postgres-host
         - name: SPRING_DATASOURCE_URL
           value: jdbc:postgresql://$(POSTGRES_HOST)/$(POSTGRES_DB)
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mm-backend-service
+spec:
+  selector:
+    app: mm-backend
+  type: LoadBalancer
+  ports:
+  - protocol: TCP
+    port: 8081 # Service port accessible from outside
+    targetPort: 8080 # Container port
+    nodePort: 30000
