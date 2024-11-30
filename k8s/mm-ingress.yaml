@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: mm-ingress
+  namespace: money-manager-dev
+spec:
+  rules:
+  - host: mm.backend.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: mm-backend-service
+            port:
+              number: 8081
+#  - host: mm.frontend.com
+#    http:
+#      paths:
+#      - path: /
+#        pathType: Prefix
+#        backend:
+#          service:
+#            name: mm-backend-service
+#            port:
+#              number: 8081

@@ -49,5 +49,5 @@ spec:
     app: mm-postgres
   ports:
   - protocol: TCP
-    port: 5432 # Service port accessible from outside
+    port: 5432 # Service port accessible from outside (only in k8s cluster)
     targetPort: 5432 # Container port
