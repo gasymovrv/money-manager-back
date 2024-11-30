@@ -45,7 +45,7 @@ spec:
               name: mm-configmap
               key: postgres-host
         - name: SPRING_DATASOURCE_URL
-          value: jdbc:postgresql://$(POSTGRES_HOST)/$(POSTGRES_DB)
+          value: jdbc:postgresql://$(POSTGRES_HOST)/$(POSTGRES_DB) # Use environment variables declared above
 ---
 apiVersion: v1
 kind: Service
