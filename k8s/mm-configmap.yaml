@@ -3,4 +3,4 @@ kind: ConfigMap
 metadata:
   name: mm-configmap
 data:
-  postgres-host: mm-postgres-service
+  postgres-host: mm-postgres-service # Reference to the postgres service which provides access to the mm-postgres pod IP and port
