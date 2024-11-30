@@ -46,6 +46,7 @@ spec:
               key: postgres-host
         - name: SPRING_DATASOURCE_URL
           value: jdbc:postgresql://$(POSTGRES_HOST)/$(POSTGRES_DB) # Use environment variables declared above
+
 ---
 apiVersion: v1
 kind: Service
@@ -55,9 +56,7 @@ metadata:
 spec:
   selector:
     app: mm-backend
-  type: LoadBalancer
   ports:
   - protocol: TCP
-    port: 8081 # Service port accessible from outside
+    port: 8081 # Service port accessible from outside (only in k8s cluster)
     targetPort: 8080 # Container port
-    nodePort: 30000
