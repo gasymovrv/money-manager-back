@@ -39,11 +39,41 @@ spec:
             secretKeyRef:
               name: mm-secrets
               key: postgres-db
+        - name: GOOGLE_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: mm-secrets
+              key: google-client-id
+        - name: GOOGLE_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: mm-secrets
+              key: google-client-secret
+        - name: VK_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: mm-secrets
+              key: vk-client-id
+        - name: VK_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: mm-secrets
+              key: vk-client-secret
         - name: POSTGRES_HOST
           valueFrom:
             configMapKeyRef:
               name: mm-configmap
               key: postgres-host
+        - name: TOKEN_EXPIRATION_PERIOD
+          valueFrom:
+            configMapKeyRef:
+              name: mm-configmap
+              key: token-expiration-period
+        - name: ALLOWED_ORIGINS
+          valueFrom:
+            configMapKeyRef:
+              name: mm-configmap
+              key: allowed-origins
         - name: SPRING_DATASOURCE_URL
           value: jdbc:postgresql://$(POSTGRES_HOST)/$(POSTGRES_DB) # Use environment variables declared above
 

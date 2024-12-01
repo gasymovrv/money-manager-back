@@ -1,6 +1,10 @@
 # Whenever you release new versions of services, change env or Dockerfile
 # you must start containers with rebuilding docker images by the command:
 # docker-compose up --build -d
+# or only certain services:
+# docker-compose up --build -d money-manager-frontend
+# or just build images:
+# docker-compose build money-manager-frontend
 
 services:
   nginx:
