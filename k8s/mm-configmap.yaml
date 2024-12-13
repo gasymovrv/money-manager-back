@@ -1,9 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: mm-configmap
-  namespace: money-manager-dev
-data:
-  postgres-host: mm-postgres-service # Reference to the postgres service which provides access to the mm-postgres pod IP and port
-  token-expiration-period: 30d
-  allowed-origins: https://mm.backend.com,https://mm.frontend.com
