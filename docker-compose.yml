@@ -38,7 +38,7 @@ services:
       dockerfile: Dockerfile
       args:
         NODE_ENV: production
-        REACT_APP_BACKEND_HOST: http://localhost:8081
+        REACT_APP_BACKEND_HOST: http://localhost:8081 # for k8s change to https://mm.backend.com
         GENERATE_SOURCEMAP: false
     ports:
       - "9001:80"
