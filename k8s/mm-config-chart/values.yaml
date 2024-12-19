@@ -10,6 +10,10 @@ serviceAccount:
   # If not set and create is true, a name is generated using the fullname template
   name: ""
 
+# Here is test json: {"auths": {"cr.yandex": {"auth": "123"}}}
+# You can find the actual file after calling `docker login ...` at "/root/.docker/config.json" or at "~/.docker/config.json"
+dockerconfigjson: eyJhdXRocyI6IHsiY3IueWFuZGV4IjogeyJhdXRoIjogIjEyMyJ9fX0=
+
 configmap:
   postgres-host: mm-postgres # Reference to the postgres service which provides access to the mm-postgres pod IP and port
   token-expiration-period: 30d
