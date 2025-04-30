@@ -11,6 +11,23 @@ Core technologies:
 + PostgreSQL 16.1
 + Maven
 
+## Excel import and export
+Application supports import and export to Excel files.
+File structure must be like this:
+
+Columns
++ 1: Date;
++ [2, n]: Incomes (first row has group of this columns named "Incomes"), n-th column is always "Incomes sum". Each column except n is a category of income;
++ [n+1, m]: Expenses (first row has group of this columns named "Expenses "), m-th column is always "Expenses sum". Each column except m is a category of expense;
++ m+1: Savings.
+
+Rows
++ 1,2: Headers with names of columns;
++ 3: "Previous savings". This row used only when we need to provide savings saved before the table existing. Usually doesn't have values
++ 4 - end of list: incomes, expenses and savings by dates
+
+Data grouped by years in separate lists
+
 ### Security
 OAuth2 authentication through Google or VKontakte
 
