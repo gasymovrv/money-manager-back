@@ -3,6 +3,21 @@
 # docker-compose up --build -d
 
 services:
+  nginx:
+    image: money-manager-nginx:${VERSION}
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - money-manager-frontend
+      - money-manager-backend
+    networks:
+      - money-manager-network
 
   money-manager-backend:
     image: money-manager-backend:${VERSION}
@@ -10,8 +25,8 @@ services:
       pull: false
       context: .
       dockerfile: Dockerfile
-    ports:
-      - "8081:8081"
+    expose:
+      - "8081"
     environment:
       PORT: 8081
       SPRING_DATASOURCE_URL: jdbc:postgresql://money-manager-postgres:5432/moneymanagerdb
@@ -39,8 +54,8 @@ services:
         NODE_ENV: production
         REACT_APP_BACKEND_HOST: ${REACT_APP_BACKEND_HOST}
         GENERATE_SOURCEMAP: false
-    ports:
-      - "9001:80"
+    expose:
+      - "80"
     networks:
       - money-manager-network
 
