@@ -15,14 +15,16 @@ services:
     environment:
       PORT: 8081
       SPRING_DATASOURCE_URL: jdbc:postgresql://money-manager-postgres:5432/moneymanagerdb
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: password
-      ALLOWED_ORIGINS: http://localhost:9001,http://localhost:8081
+      SPRING_DATASOURCE_USERNAME: mmpguser
+      SPRING_DATASOURCE_PASSWORD: mmpgpass
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       VK_CLIENT_ID: ${VK_CLIENT_ID}
       VK_CLIENT_SECRET: ${VK_CLIENT_SECRET}
       TOKEN_EXPIRATION_PERIOD: 30d
+      TOKEN_SECRET: ${TOKEN_SECRET}
+      ENABLE_SWAGGER: ${ENABLE_SWAGGER}
     networks:
       - money-manager-network
 
@@ -32,9 +34,10 @@ services:
       pull: false
       context: ../money-manager-front
       dockerfile: Dockerfile
+      # These arguments are set on the image build
       args:
         NODE_ENV: production
-        REACT_APP_BACKEND_HOST: http://localhost:8081
+        REACT_APP_BACKEND_HOST: ${REACT_APP_BACKEND_HOST}
         GENERATE_SOURCEMAP: false
     ports:
       - "9001:80"
@@ -42,12 +45,12 @@ services:
       - money-manager-network
 
   money-manager-postgres:
-    image: postgres:16.1
+    image: postgres:17.5
     ports:
       - "5532:5432"
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
+      POSTGRES_USER: mmpguser
+      POSTGRES_PASSWORD: mmpgpass
       POSTGRES_DB: moneymanagerdb
     networks:
       - money-manager-network
