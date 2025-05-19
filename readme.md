@@ -28,7 +28,7 @@ Rows
 
 Data grouped by years in separate lists
 
-### Security
+## Security
 OAuth2 authentication through Google or VKontakte
 
 Implemented by spring-boot-starter-oauth2-client but customized to remove sessions and make the application stateless RESTful API with JWT token
@@ -44,6 +44,46 @@ Schema:
 
 See details in [HttpCookieOauth2AuthorizationRequestRepository.java](src/main/java/ru/rgasymov/moneymanager/security/oauth2/HttpCookieOauth2AuthorizationRequestRepository.java)
 
+## HTTPS Setup
+The application uses Nginx as a reverse proxy to handle HTTPS traffic. The setup includes:
+
+### Architecture
+- Nginx handles SSL termination and routes traffic to appropriate services
+- Frontend and backend services are only accessible through Nginx
+- All services communicate through Docker network using internal ports
+
+### Configuration
+1. SSL Certificates:
+   ```bash
+   # Generate self-signed certificates for development
+   mkdir -p nginx/ssl
+   openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+     -keyout nginx/ssl/key.pem \
+     -out nginx/ssl/cert.pem
+   ```
+
+2. Nginx Configuration:
+   - Located in `nginx/nginx.conf`
+   - Handles SSL termination
+   - Routes traffic:
+     - Frontend: `https://localhost/`
+     - Backend API: `https://localhost/api/`
+     - OAuth2 endpoints: `https://localhost/oauth2/`
+   - Redirects HTTP to HTTPS
+   - Properly handles OAuth2 redirects
+
+3. Docker Compose:
+   - Nginx service exposes ports 80 and 443
+   - Frontend and backend services use internal ports
+   - All services connected through Docker network
+
+### Access Points
+- Frontend: `https://localhost`
+- Backend API: `https://localhost/api`
+- OAuth2 endpoints: `https://localhost/oauth2`
+
+Note: For production, replace self-signed certificates with proper SSL certificates from a trusted certificate authority.
+
 ## Instructions
 ### Build and run
 + Run PostgreSQL by [docker-compose.yml](docker-compose.yml)
@@ -51,5 +91,20 @@ See details in [HttpCookieOauth2AuthorizationRequestRepository.java](src/main/ja
 + Call `mvn clean package` at root of the project to build the application. `-Drevision=1.0.0` can be added to change the version of the project
 + Built result (jar file) will be in 'target' directory at the root of the project
 + Call `java -Duser.timezone=UTC -jar money-manager-<version>.jar` to start the application
+
+### Docker Compose Commands
+```bash
+# Build and start all services
+docker-compose up --build -d
+
+# Build and start specific service
+docker-compose up --build -d money-manager-frontend
+
+# Build specific service
+docker-compose build money-manager-frontend
+
+# Just start all services without building
+docker-compose up -d
+```
 
 
