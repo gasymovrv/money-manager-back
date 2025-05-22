@@ -24,8 +24,8 @@ spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5532/moneymanagerdb}
     driverClassName: org.postgresql.Driver
-    username: ${SPRING_DATASOURCE_USERNAME:postgres}
-    password: ${SPRING_DATASOURCE_PASSWORD:password}
+    username: ${SPRING_DATASOURCE_USERNAME:mmpguser}
+    password: ${SPRING_DATASOURCE_PASSWORD:mmpgpass}
   jpa:
     hibernate:
       ddl-auto: validate

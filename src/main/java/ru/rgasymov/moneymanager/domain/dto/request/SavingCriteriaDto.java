@@ -32,9 +32,9 @@ public class SavingCriteriaDto {
   @PositiveOrZero
   private Integer pageNum = 0;
 
-  @Parameter(example = "1000")
+  @Parameter(example = "100")
   @Positive
-  private Integer pageSize = 1000;
+  private Integer pageSize = 100;
 
   private Period groupBy = Period.DAY;
 

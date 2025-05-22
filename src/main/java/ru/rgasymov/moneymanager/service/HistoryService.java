@@ -4,6 +4,9 @@ import java.time.LocalDate;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.rgasymov.moneymanager.domain.dto.response.HistoryActionDto;
@@ -26,9 +29,14 @@ public class HistoryService {
   private final UserService userService;
 
   @Transactional(readOnly = true)
-  public List<HistoryActionDto> findAll() {
-    var list = historyRepository.findAll();
-    return historyMapper.toDtos(list);
+  public Page<HistoryActionDto> findAll(Pageable pageable) {
+    var currentUser = userService.getCurrentUser();
+    var page = historyRepository.findAllByAccountIdOrderByModifiedAtDesc(
+        currentUser.getCurrentAccount().getId(),
+        pageable
+    );
+    List<HistoryActionDto> dtos = historyMapper.toDtos(page.getContent());
+    return new PageImpl<>(dtos, pageable, page.getTotalElements());
   }
 
   @Transactional

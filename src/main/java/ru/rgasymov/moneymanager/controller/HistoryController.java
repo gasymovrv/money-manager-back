@@ -1,9 +1,11 @@
 package ru.rgasymov.moneymanager.controller;
 
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -23,8 +25,9 @@ public class HistoryController {
   private final HistoryService historyService;
 
   @GetMapping()
-  public List<HistoryActionDto> findAll() {
+  public Page<HistoryActionDto> findAll(
+      @PageableDefault(sort = {"modifiedAt"}, size = 20) Pageable pageable) {
     log.info("# Find all operations history, current user: {}", userService.getCurrentUser());
-    return historyService.findAll();
+    return historyService.findAll(pageable);
   }
 }
