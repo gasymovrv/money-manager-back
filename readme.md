@@ -1,6 +1,8 @@
 # Money-Manager (backend)
 The main purpose of the application is to manage income, expenses and savings. 
 
+Application is deployed at https://money-manager.ddns.net.
+
 It is a stateless backend REST API with oAuth2 authorization.
 
 User data stores in PostgreSQL database.

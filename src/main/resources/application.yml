@@ -13,8 +13,9 @@ spring:
   main:
     banner-mode: "off"
     allow-bean-definition-overriding: true
-  config:
-    import: optional:file:.env[.properties]
+# Use it when you need to add secrets right in build on compile time
+#  config:
+#    import: optional:file:.env[.properties]
   jackson:
     serialization:
       write-dates-as-timestamps: false
