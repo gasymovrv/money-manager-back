@@ -32,6 +32,6 @@ public class SwaggerConfig {
             .contact(new Contact().email("gasymovrv@gmail.com")))
         .externalDocs(new ExternalDocumentation()
             .description("Money-Manager on Github")
-            .url("https://github.com/gasymovrv/money-manager"));
+            .url("https://github.com/gasymovrv/money-manager-back"));
   }
 }

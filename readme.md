@@ -3,7 +3,7 @@ The main purpose of the application is to manage income, expenses and savings.
 
 Application is deployed at https://money-manager.ddns.net.
 
-It is a stateless backend REST API with oAuth2 authorization.
+It is a stateless backend REST API with oAuth2 authorization. Here is a frontend part: https://github.com/gasymovrv/money-manager-front
 
 User data stores in PostgreSQL database.
 
