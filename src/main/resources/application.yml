@@ -101,3 +101,8 @@ security:
   token-secret: ${TOKEN_SECRET:${GOOGLE_CLIENT_SECRET:token-secret}}
   token-expiration-period: ${TOKEN_EXPIRATION_PERIOD:60m}
   allowed-origins: ${ALLOWED_ORIGINS:http://localhost:3000}
+
+telegram:
+  bot:
+    token: ${TELEGRAM_BOT_TOKEN:your-bot-token-here}
+    username: ${TELEGRAM_BOT_USERNAME:your-bot-username}

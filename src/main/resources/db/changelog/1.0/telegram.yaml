@@ -1,0 +1,88 @@
+databaseChangeLog:
+
+  - changeSet:
+      id: 000000-create-table-telegram-users
+      author: Gasymov Ruslan
+      changes:
+        - createTable:
+            tableName: telegram_users
+            columns:
+              - column: { name: telegram_id, type: bigint }
+              - column: { name: user_id, type: varchar(255) }
+              - column: { name: first_name, type: varchar(255) }
+              - column: { name: last_name, type: varchar(255) }
+              - column: { name: username, type: varchar(255) }
+              - column: { name: photo_url, type: text }
+              - column: { name: auth_date, type: timestamp }
+              - column: { name: created_at, type: timestamp }
+              - column: { name: updated_at, type: timestamp }
+
+  - changeSet:
+      id: 000000-create-constraint-telegram-users
+      author: Gasymov Ruslan
+      changes:
+        - addNotNullConstraint:
+            tableName: telegram_users
+            columnName: telegram_id
+            columnDataType: bigint
+        - addPrimaryKey:
+            columnNames: telegram_id
+            tableName: telegram_users
+        - addNotNullConstraint:
+            tableName: telegram_users
+            columnName: user_id
+            columnDataType: varchar(255)
+        - addForeignKeyConstraint:
+            baseTableName: telegram_users
+            baseColumnNames: user_id
+            constraintName: fk_telegram_users_user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: 000000-create-table-telegram-messages
+      author: Gasymov Ruslan
+      changes:
+        - createTable:
+            tableName: telegram_messages
+            columns:
+              - column: { name: message_id, type: bigint }
+              - column: { name: telegram_id, type: bigint }
+              - column: { name: chat_id, type: bigint }
+              - column: { name: message_text, type: text }
+              - column: { name: processed_at, type: timestamp }
+
+  - changeSet:
+      id: 000000-create-constraint-telegram-messages
+      author: Gasymov Ruslan
+      changes:
+        - addNotNullConstraint:
+            tableName: telegram_messages
+            columnName: message_id
+            columnDataType: bigint
+        - addPrimaryKey:
+            columnNames: message_id
+            tableName: telegram_messages
+        - addNotNullConstraint:
+            tableName: telegram_messages
+            columnName: telegram_id
+            columnDataType: bigint
+        - addNotNullConstraint:
+            tableName: telegram_messages
+            columnName: chat_id
+            columnDataType: bigint
+        - addNotNullConstraint:
+            tableName: telegram_messages
+            columnName: processed_at
+            columnDataType: timestamp
+
+  - changeSet:
+      id: 000000-create-index-telegram-messages
+      author: Gasymov Ruslan
+      changes:
+        - createIndex:
+            indexName: idx_telegram_messages_telegram_id
+            tableName: telegram_messages
+            columns:
+              - column: { name: telegram_id }
