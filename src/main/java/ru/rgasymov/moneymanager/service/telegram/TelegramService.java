@@ -42,7 +42,7 @@ public class TelegramService {
    * @param authDto the authentication data
    * @return true if valid
    */
-  public boolean  verifyTelegramAuth(TelegramAuthDto authDto) {
+  public boolean verifyTelegramAuth(TelegramAuthDto authDto) {
     try {
       // Create data check string
       Map<String, String> dataMap = new TreeMap<>();

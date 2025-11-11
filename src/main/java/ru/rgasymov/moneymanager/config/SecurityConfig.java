@@ -83,6 +83,7 @@ public class SecurityConfig {
         .authorizeHttpRequests(it -> it
             .requestMatchers(
                 apiBaseUrl + "/version",
+                apiBaseUrl + "/telegram/webhook",
                 "/swagger-ui/**",
                 "/v3/api-docs/**",
                 "/favicon.ico",

@@ -33,7 +33,6 @@ The integration consists of two main features:
 2. Set the following variables:
    ```env
    TELEGRAM_BOT_TOKEN=your-bot-token-here
-   TELEGRAM_BOT_USERNAME=your-bot-username
    ```
 
 3. The backend configuration is already set up in `application.yml`:
@@ -41,7 +40,6 @@ The integration consists of two main features:
    telegram:
      bot:
        token: ${TELEGRAM_BOT_TOKEN:your-bot-token-here}
-       username: ${TELEGRAM_BOT_USERNAME:your-bot-username}
    ```
 
 ## Step 4: Configure Frontend
@@ -152,57 +150,87 @@ Receives webhook updates from Telegram (called by Telegram, not by frontend).
 
 ## Local Testing
 
-### Using ngrok (Recommended)
-
 **Important:** Telegram Login Widget requires the page to be served from the exact domain you set in BotFather. Using `localhost:3000` won't work due to CSP restrictions.
+
+### Using Local Nginx
+
+This setup uses nginx in Docker to proxy both frontend and backend through one domain.
 
 #### Setup:
 
-1. Install ngrok: https://ngrok.com/download
+1. **Start nginx via Docker Compose:**
+   ```bash
+   cd money-manager-back
+   docker-compose -f docker-compose-local.yml up -d
+   ```
+   Nginx will proxy requests from `http://mm.localtest.me` to your local ports.
 
-2. Start your backend:
+2. Use ngrok to expose your backend:
+   ```bash
+   ngrok http http://mm.localtest.me
+   ```
+   You'll get a URL like: `https://abc123.ngrok-free.dev`
+
+3. **Configure environment variables:**
+
+   `money-manager-back/.env`:
+   ```env
+   TELEGRAM_BOT_TOKEN=your-bot-token-here
+   ALLOWED_ORIGINS=https://abc123.ngrok-free.dev
+   ```
+
+   `money-manager-front/.env`:
+   ```env
+   REACT_APP_BACKEND_HOST=https://abc123.ngrok-free.dev
+   REACT_APP_TELEGRAM_BOT_USERNAME=your-bot-username
+   ```
+   
+    Don't forget add ngrok url as redirect_uri and allowed domain to OAuth providers (VK and Google)
+
+4. **Start backend in IDE:**
    ```bash
    cd money-manager-back
    mvn spring-boot:run
    ```
+   Backend will run on `localhost:8080`
 
-3. Start your frontend:
+5. **Start frontend in IDE:**
    ```bash
    cd money-manager-front
    npm start
    ```
+   Frontend will run on `localhost:3000`
 
-4. Start ngrok for frontend (in a new terminal):
-   ```bash
-   ngrok http 3000
-   ```
-   You'll get a URL like: `https://abc123.ngrok-free.app`
-
-5. Set domain in BotFather:
+6. **Set domain in BotFather:**
    - Open @BotFather in Telegram
    - Send `/setdomain`
    - Select your bot
-   - Enter: `abc123.ngrok-free.app` (without https://)
+   - Enter: `abc123.ngrok-free.dev`
 
-6. Set webhook for backend (start another ngrok for port 8080):
-   ```bash
-   ngrok http 8080
-   ```
-   You'll get another URL like: `https://xyz789.ngrok-free.app`
+7. **Set up webhook for receiving messages:**
 
+   Set webhook:
    ```bash
    curl -X POST "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook" \
      -H "Content-Type: application/json" \
-     -d '{"url": "https://xyz789.ngrok-free.app/api/telegram/webhook"}'
+     -d '{"url": "https://abc123.ngrok-free.dev/api/telegram/webhook"}'
    ```
 
-7. Open frontend in browser using the ngrok URL: `https://abc123.ngrok-free.app`
+8. **Open application:**
+   Open in browser: `https://abc123.ngrok-free.dev`
 
-8. Test the integration:
+9. **Test Login Widget:**
    - Login to Money Manager
    - Click Telegram widget in header
    - Authenticate with Telegram
-   - Send a message to your bot
+   - Check backend logs for successful account linking
+   - Send a message to your bot in Telegram and check backend logs.
+
+#### Stop nginx:
+```bash
+cd money-manager-back
+docker-compose -f docker-compose-local.yml down
+```
 
 ## Testing
 

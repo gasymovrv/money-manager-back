@@ -6,6 +6,7 @@ server:
     whitelabel:
       enabled: true
   port: ${PORT:8080}
+  forward-headers-strategy: framework
 
 spring:
   application:
@@ -105,4 +106,3 @@ security:
 telegram:
   bot:
     token: ${TELEGRAM_BOT_TOKEN:your-bot-token-here}
-    username: ${TELEGRAM_BOT_USERNAME:your-bot-username}
