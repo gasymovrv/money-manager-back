@@ -106,3 +106,4 @@ security:
 telegram:
   bot:
     token: ${TELEGRAM_BOT_TOKEN:your-bot-token-here}
+    webhook-secret: ${TELEGRAM_WEBHOOK_SECRET:}

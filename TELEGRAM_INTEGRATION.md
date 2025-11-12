@@ -60,24 +60,36 @@ Just start the backend application and the migrations will run automatically.
 
 ## Step 6: Set Up Webhook
 
-After deploying your application, you need to set the webhook URL for your bot:
+### Generate Webhook Secret (Recommended)
+
+For security, generate a random secret token:
+
+```bash
+# Generate a random secret (Linux/Mac)
+openssl rand -hex 32
+
+# Or use any random string generator
+```
+
+Add it to `money-manager-back/.env`:
+```env
+TELEGRAM_WEBHOOK_SECRET=your-generated-secret-here
+```
+
+### Set Webhook URL
+
+After deploying your application, set the webhook URL with the secret token:
 
 ```bash
 curl -X POST "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook" \
   -H "Content-Type: application/json" \
-  -d '{"url": "https://your-domain.com/api/telegram/webhook"}'
+  -d '{ 
+    "url": "https://your-domain.com/api/telegram/webhook",
+    "secret_token": "your-generated-secret-here"
+  }'
 ```
 
-For local development with ngrok:
-```bash
-# Start ngrok
-ngrok http 8080
-
-# Set webhook with ngrok URL
-curl -X POST "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook" \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://your-ngrok-url.ngrok.io/api/telegram/webhook"}'
-```
+**Note:** The webhook endpoint verifies the `X-Telegram-Bot-Api-Secret-Token` header matches your configured secret.
 
 ## How It Works
 
@@ -143,10 +155,11 @@ Receives webhook updates from Telegram (called by Telegram, not by frontend).
 
 ## Security
 
-1. **Authentication Verification**: The backend verifies Telegram authentication using HMAC-SHA256 with the bot token
-2. **User Linking**: Only authenticated Money Manager users can link their Telegram accounts
-3. **Message Authorization**: Webhook only processes messages from linked users
-4. **Deduplication**: Message IDs are stored to prevent duplicate processing
+1. **Webhook Secret Token**: The webhook endpoint verifies `X-Telegram-Bot-Api-Secret-Token` header to ensure requests come from Telegram
+2. **Authentication Verification**: The backend verifies Telegram login widget data using HMAC-SHA256 with the bot token
+3. **User Linking**: Only authenticated Money Manager users can link their Telegram accounts
+4. **Message Authorization**: Webhook only processes messages from linked users
+5. **Deduplication**: Message IDs are stored to prevent duplicate processing
 
 ## Local Testing
 
@@ -212,8 +225,11 @@ This setup uses nginx in Docker to proxy both frontend and backend through one d
    Set webhook:
    ```bash
    curl -X POST "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook" \
-     -H "Content-Type: application/json" \
-     -d '{"url": "https://abc123.ngrok-free.dev/api/telegram/webhook"}'
+   -H "Content-Type: application/json" \
+   -d '{
+    "url": "https://abc123.ngrok-free.dev/api/telegram/webhook",
+    "secret_token": "your-generated-secret-here"
+   }'
    ```
 
 8. **Open application:**

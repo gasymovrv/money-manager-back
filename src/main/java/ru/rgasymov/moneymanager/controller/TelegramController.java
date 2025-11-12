@@ -5,10 +5,12 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import ru.rgasymov.moneymanager.domain.dto.request.TelegramAuthDto;
@@ -18,7 +20,7 @@ import ru.rgasymov.moneymanager.service.UserService;
 import ru.rgasymov.moneymanager.service.telegram.TelegramService;
 
 /**
- * Controller for Telegram integration.
+ * Controller for Telegram integration endpoints.
  */
 @RestController
 @RequiredArgsConstructor
@@ -27,6 +29,9 @@ import ru.rgasymov.moneymanager.service.telegram.TelegramService;
 public class TelegramController {
 
   private final TelegramService telegramService;
+
+  @Value("${telegram.bot.webhook-secret:}")
+  private String webhookSecret;
   private final UserService userService;
 
   /**
@@ -53,22 +58,29 @@ public class TelegramController {
   }
 
   /**
-   * Webhook endpoint for Telegram bot.
+   * Webhook endpoint for receiving updates from Telegram bot.
    *
-   * @param webhookDto the webhook data
+   * @param secretToken the secret token from Telegram header
+   * @param webhookDto  the webhook update
    * @return response entity
    */
   @Operation(summary = "Telegram webhook endpoint")
   @PostMapping("/webhook")
-  public ResponseEntity<String> webhook(@RequestBody TelegramWebhookDto webhookDto) {
-    log.debug("Received Telegram webhook update: {}", webhookDto.getUpdateId());
+  public ResponseEntity<Void> webhook(
+      @RequestHeader(value = "X-Telegram-Bot-Api-Secret-Token", required = false) String secretToken,
+      @RequestBody TelegramWebhookDto webhookDto
+  ) {
 
-    try {
-      telegramService.processWebhook(webhookDto);
-      return ResponseEntity.ok("OK");
-    } catch (Exception e) {
-      log.error("Error processing Telegram webhook", e);
-      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error processing webhook");
+    // Verify secret token if configured
+    if (webhookSecret != null && !webhookSecret.isEmpty()) {
+      if (secretToken == null || !secretToken.equals(webhookSecret)) {
+        log.warn("Invalid or missing webhook secret token");
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+      }
     }
+
+    log.debug("Received Telegram webhook update: {}", webhookDto.getUpdateId());
+    telegramService.processWebhook(webhookDto);
+    return ResponseEntity.ok().build();
   }
 }
