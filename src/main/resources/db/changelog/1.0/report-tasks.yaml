@@ -1,0 +1,99 @@
+databaseChangeLog:
+
+  - changeSet:
+      id: 000001-create-table-report-tasks
+      author: Gasymov Ruslan
+      changes:
+        - createTable:
+            tableName: report_tasks
+            columns:
+              - column: { name: id, type: bigint, autoIncrement: true }
+              - column: { name: telegram_id, type: bigint }
+              - column: { name: chat_id, type: bigint }
+              - column: { name: start_date, type: date }
+              - column: { name: end_date, type: date }
+              - column: { name: status, type: varchar(50) }
+              - column: { name: retry_count, type: int, defaultValue: 0 }
+              - column: { name: max_retries, type: int }
+              - column: { name: error_message, type: text }
+              - column: { name: created_at, type: timestamp }
+              - column: { name: updated_at, type: timestamp }
+              - column: { name: next_retry_at, type: timestamp }
+
+  - changeSet:
+      id: 000001-create-constraint-report-tasks
+      author: Gasymov Ruslan
+      changes:
+        - addPrimaryKey:
+            columnNames: id
+            tableName: report_tasks
+        - addNotNullConstraint:
+            tableName: report_tasks
+            columnName: telegram_id
+            columnDataType: bigint
+        - addNotNullConstraint:
+            tableName: report_tasks
+            columnName: chat_id
+            columnDataType: bigint
+        - addNotNullConstraint:
+            tableName: report_tasks
+            columnName: start_date
+            columnDataType: date
+        - addNotNullConstraint:
+            tableName: report_tasks
+            columnName: end_date
+            columnDataType: date
+        - addNotNullConstraint:
+            tableName: report_tasks
+            columnName: status
+            columnDataType: varchar(50)
+        - addNotNullConstraint:
+            tableName: report_tasks
+            columnName: max_retries
+            columnDataType: int
+        - addNotNullConstraint:
+            tableName: report_tasks
+            columnName: created_at
+            columnDataType: timestamp
+
+  - changeSet:
+      id: 000001-create-index-report-tasks
+      author: Gasymov Ruslan
+      changes:
+        - createIndex:
+            indexName: idx_report_tasks_status
+            tableName: report_tasks
+            columns:
+              - column: { name: status }
+        - createIndex:
+            indexName: idx_report_tasks_next_retry
+            tableName: report_tasks
+            columns:
+              - column: { name: next_retry_at }
+
+  - changeSet:
+      id: 000001-create-table-telegram-user-states
+      author: Gasymov Ruslan
+      changes:
+        - createTable:
+            tableName: telegram_user_states
+            columns:
+              - column: { name: telegram_id, type: bigint }
+              - column: { name: state, type: varchar(50) }
+              - column: { name: updated_at, type: timestamp }
+
+  - changeSet:
+      id: 000001-create-constraint-telegram-user-states
+      author: Gasymov Ruslan
+      changes:
+        - addPrimaryKey:
+            columnNames: telegram_id
+            tableName: telegram_user_states
+        - addNotNullConstraint:
+            tableName: telegram_user_states
+            columnName: state
+            columnDataType: varchar(50)
+        - addNotNullConstraint:
+            tableName: telegram_user_states
+            columnName: updated_at
+            columnDataType: timestamp

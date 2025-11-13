@@ -188,6 +188,7 @@ public class TelegramService {
     Long chatId = message.getChat().getId();
 
     // Get or create user state
+    // TODO userState лучше вытаскивать через SELECT .. FOR UPDATE
     TelegramUserState userState = telegramUserStateRepository.findById(telegramId).orElse(
         TelegramUserState.builder()
             .telegramId(telegramId)
@@ -196,6 +197,7 @@ public class TelegramService {
             .build()
     );
 
+    // TODO для /report не надо проверить что userState действительно NONE? или мы просто перетрем и начнем заново и это норм?
     // Process message based on state
     if ("/report".equalsIgnoreCase(messageText)) {
       handleReportCommand(telegramId, chatId, userState);

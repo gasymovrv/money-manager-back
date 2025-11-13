@@ -9,3 +9,4 @@ databaseChangeLog:
   - include: { relativeToChangelogFile: true, file: history.yaml }
   - include: { relativeToChangelogFile: true, file: indexes.yaml }
   - include: { relativeToChangelogFile: true, file: telegram.yaml }
+  - include: { relativeToChangelogFile: true, file: report-tasks.yaml }

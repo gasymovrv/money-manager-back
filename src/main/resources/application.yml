@@ -107,3 +107,10 @@ telegram:
   bot:
     token: ${TELEGRAM_BOT_TOKEN:your-bot-token-here}
     webhook-secret: ${TELEGRAM_WEBHOOK_SECRET:}
+
+report:
+  task:
+    max-retries: ${REPORT_TASK_MAX_RETRIES:3}
+    retry-delay-minutes: ${REPORT_TASK_RETRY_DELAY_MINUTES:5}
+    processor:
+      delay-ms: ${REPORT_TASK_PROCESSOR_DELAY_MS:60000}
