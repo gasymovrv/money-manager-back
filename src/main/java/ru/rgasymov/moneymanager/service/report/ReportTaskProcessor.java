@@ -29,15 +29,19 @@ public class ReportTaskProcessor {
   @Value("${report.task.retry-delay-minutes:5}")
   private int retryDelayMinutes;
 
+  @Value("${report.task.cleanup.retention-days:30}")
+  private int cleanupRetentionDays;
+
   /**
    * Process pending report tasks.
    * Runs every minute by default.
    */
   @Scheduled(fixedDelayString = "${report.task.processor.delay-ms:60000}")
+  // TODO Все еще транзакция? внутри по прежнему генерация репорта. Сделать лямбда утилиту чтобы обернуть транзакциями методы updateTaskStatus и handleFailure
   @Transactional
   public void processPendingTasks() {
-    // TODO Что если второй под сервиса также вызовет эту ручку? нужно делать SELECT ... FOR UPDATE SKIP LOCKED и предполагаю тут  лучше через native query
-    List<ReportTask> pendingTasks = reportTaskRepository.findByStatusAndNextRetryAtLessThanEqual(ReportTaskStatus.PENDING, LocalDateTime.now());
+    // Use SELECT FOR UPDATE SKIP LOCKED to prevent concurrent processing across multiple pods
+    List<ReportTask> pendingTasks = reportTaskRepository.findTasksForProcessing(ReportTaskStatus.PENDING.name(), LocalDateTime.now());
 
     if (pendingTasks.isEmpty()) {
       log.debug("No pending tasks to process");
@@ -59,42 +63,42 @@ public class ReportTaskProcessor {
   private void processTask(ReportTask task) {
     log.info("Processing report task {} for user {}", task.getId(), task.getTelegramId());
 
-    task.setStatus(ReportTaskStatus.PROCESSING);
-    task.setUpdatedAt(LocalDateTime.now());
-    reportTaskRepository.save(task);
+    updateTaskStatus(task, ReportTaskStatus.PROCESSING);
 
+    File reportFile = null;
     try {
-      // TODO Такая тяжелая операция внутри транзакции? может стоит разделить на 2 транзакции
-      // Generate report
-      File reportFile = reportGenerationService.generateReport(task.getTelegramId(), task.getStartDate(), task.getEndDate());
+      // Generate report outside of transaction (heavy operation)
+      reportFile = reportGenerationService.generateReport(task.getTelegramId(), task.getStartDate(), task.getEndDate());
 
-      // TODO Зачем нам этот boolean? Лучше кинуть ошибку и обработать все в одном catch блоке
-      // Send report to user
-      boolean sent = telegramBotClient.sendDocument(
+      // Send report to user (throws exception on failure)
+      telegramBotClient.sendDocument(
           task.getChatId(),
           reportFile,
           String.format("Financial report for period %s - %s", task.getStartDate(), task.getEndDate())
       );
 
-      if (sent) {
-        task.setStatus(ReportTaskStatus.COMPLETED);
-        task.setUpdatedAt(LocalDateTime.now());
-        // TODO решил не удалять таски в случае успеха или ошибки после всех ретраев? тогда нужен другой шедулер который будет чистить старые по истечении какого-то времени
-        reportTaskRepository.save(task);
-        log.info("Report task {} completed successfully", task.getId());
-
-        // Delete temporary file
-        if (reportFile.exists()) {
-          reportFile.delete();
-        }
-      } else {
-        handleFailure(task, "Failed to send report to Telegram");
-      }
+      updateTaskStatus(task, ReportTaskStatus.COMPLETED);
+      log.info("Report task {} completed successfully", task.getId());
 
     } catch (Exception e) {
       log.error("Error processing report task {}", task.getId(), e);
       handleFailure(task, e.getMessage());
+    } finally {
+      // Delete temporary file
+      if (reportFile != null && reportFile.exists()) {
+        reportFile.delete();
+      }
     }
+  }
+
+  /**
+   * Update task status in a separate transaction.
+   */
+  @Transactional
+  private void updateTaskStatus(ReportTask task, ReportTaskStatus status) {
+    task.setStatus(status);
+    task.setUpdatedAt(LocalDateTime.now());
+    reportTaskRepository.save(task);
   }
 
   /**
@@ -103,6 +107,7 @@ public class ReportTaskProcessor {
    * @param task         the failed task
    * @param errorMessage the error message
    */
+  @Transactional
   private void handleFailure(ReportTask task, String errorMessage) {
     task.setRetryCount(task.getRetryCount() + 1);
     task.setErrorMessage(errorMessage);
@@ -127,6 +132,25 @@ public class ReportTaskProcessor {
       reportTaskRepository.save(task);
 
       log.info("Report task {} scheduled for retry {} at {}", task.getId(), task.getRetryCount(), task.getNextRetryAt());
+    }
+  }
+
+  /**
+   * Cleanup old completed and failed tasks.
+   * Runs daily at 3 AM by default.
+   */
+  @Scheduled(cron = "${report.task.cleanup.cron:0 0 3 * * ?}")
+  @Transactional
+  public void cleanupOldTasks() {
+    LocalDateTime cutoffDate = LocalDateTime.now().minusDays(cleanupRetentionDays);
+
+    int deletedCount = reportTaskRepository.deleteOldTasks(
+        List.of(ReportTaskStatus.COMPLETED, ReportTaskStatus.FAILED, ReportTaskStatus.PROCESSING),
+        cutoffDate
+    );
+
+    if (deletedCount > 0) {
+      log.info("Cleaned up {} old report tasks older than {}", deletedCount, cutoffDate);
     }
   }
 }

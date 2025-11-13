@@ -114,3 +114,6 @@ report:
     retry-delay-minutes: ${REPORT_TASK_RETRY_DELAY_MINUTES:5}
     processor:
       delay-ms: ${REPORT_TASK_PROCESSOR_DELAY_MS:60000}
+    cleanup:
+      cron: ${REPORT_TASK_CLEANUP_CRON:0 0 3 * * ?}
+      retention-days: ${REPORT_TASK_CLEANUP_RETENTION_DAYS:30}

@@ -3,6 +3,9 @@ package ru.rgasymov.moneymanager.repository;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import ru.rgasymov.moneymanager.domain.entity.ReportTask;
 import ru.rgasymov.moneymanager.domain.entity.ReportTask.ReportTaskStatus;
@@ -14,21 +17,30 @@ import ru.rgasymov.moneymanager.domain.entity.ReportTask.ReportTaskStatus;
 public interface ReportTaskRepository extends JpaRepository<ReportTask, Long> {
 
   /**
-   * Find all pending tasks that are ready for processing.
+   * Find all pending tasks that are ready for processing with pessimistic lock.
+   * Uses SELECT FOR UPDATE SKIP LOCKED to prevent concurrent processing.
    *
+   * @param status the task status
    * @param now the current time
    * @return list of tasks ready for processing
    */
-  List<ReportTask> findByStatusAndNextRetryAtLessThanEqual(
-      ReportTaskStatus status,
-      LocalDateTime now
+  @Query(value = "SELECT * FROM report_tasks WHERE status = :status AND next_retry_at <= :now FOR UPDATE SKIP LOCKED", nativeQuery = true)
+  List<ReportTask> findTasksForProcessing(
+      @Param("status") String status,
+      @Param("now") LocalDateTime now
   );
 
   /**
-   * Find all pending tasks.
+   * Delete old completed or failed tasks.
    *
-   * @param status the status
-   * @return list of pending tasks
+   * @param statuses the statuses to delete
+   * @param olderThan delete tasks older than this date
+   * @return number of deleted tasks
    */
-  List<ReportTask> findByStatus(ReportTaskStatus status);
+  @Modifying
+  @Query("DELETE FROM ReportTask t WHERE t.status IN :statuses AND t.updatedAt < :olderThan")
+  int deleteOldTasks(
+      @Param("statuses") List<ReportTaskStatus> statuses,
+      @Param("olderThan") LocalDateTime olderThan
+  );
 }

@@ -187,9 +187,8 @@ public class TelegramService {
     String messageText = message.getText();
     Long chatId = message.getChat().getId();
 
-    // Get or create user state
-    // TODO userState лучше вытаскивать через SELECT .. FOR UPDATE
-    TelegramUserState userState = telegramUserStateRepository.findById(telegramId).orElse(
+    // Get or create user state with pessimistic lock to prevent race conditions
+    TelegramUserState userState = telegramUserStateRepository.findByIdWithLock(telegramId).orElse(
         TelegramUserState.builder()
             .telegramId(telegramId)
             .state(ConversationState.NONE)
@@ -197,7 +196,6 @@ public class TelegramService {
             .build()
     );
 
-    // TODO для /report не надо проверить что userState действительно NONE? или мы просто перетрем и начнем заново и это норм?
     // Process message based on state
     if ("/report".equalsIgnoreCase(messageText)) {
       handleReportCommand(telegramId, chatId, userState);
@@ -216,6 +214,11 @@ public class TelegramService {
    */
   private void handleReportCommand(Long telegramId, Long chatId, TelegramUserState userState) {
     log.info("Processing /report command from user {}", telegramId);
+
+    // Warn if overwriting existing conversation state
+    if (userState.getState() != ConversationState.NONE) {
+      log.warn("User {} started /report while in state {}, overwriting", telegramId, userState.getState());
+    }
 
     // Update user state
     userState.setState(ConversationState.AWAITING_REPORT_DATES);

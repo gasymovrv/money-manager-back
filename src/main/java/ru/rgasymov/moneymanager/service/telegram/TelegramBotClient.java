@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
+import ru.rgasymov.moneymanager.exception.TelegramBotClientException;
 
 /**
  * Client for interacting with Telegram Bot API.
@@ -59,11 +60,11 @@ public class TelegramBotClient {
 
       log.debug("Sent message to chat {}: {}", chatId, response.getStatusCode());
       if (!response.getStatusCode().is2xxSuccessful()) {
-        // TODO Лучше наверно тут кидать exception чтобы транзакция откатывалась в случае ошибок а не повисала в состоянии о котором юзер не узнал?
+        throw new TelegramBotClientException("Failed to send message: " + response.getStatusCode());
       }
     } catch (Exception e) {
       log.error("Failed to send message to chat {}", chatId, e);
-      throw e;
+      throw new TelegramBotClientException(e);
     }
   }
 
@@ -73,9 +74,8 @@ public class TelegramBotClient {
    * @param chatId   the chat ID
    * @param file     the file to send
    * @param caption  optional caption
-   * @return true if successful
    */
-  public boolean sendDocument(Long chatId, File file, String caption) {
+  public void sendDocument(Long chatId, File file, String caption) {
     try {
       String url = String.format(TELEGRAM_API_URL, botToken, "sendDocument");
 
@@ -107,10 +107,12 @@ public class TelegramBotClient {
       );
 
       log.debug("Sent document to chat {}: {}", chatId, response.getStatusCode());
-      return response.getStatusCode().is2xxSuccessful();
+      if (!response.getStatusCode().is2xxSuccessful()) {
+        throw new TelegramBotClientException("Failed to send document: " + response.getStatusCode());
+      }
     } catch (Exception e) {
       log.error("Failed to send document to chat {}", chatId, e);
-      return false;
+      throw new TelegramBotClientException(e);
     }
   }
 }
