@@ -3,10 +3,16 @@ package ru.rgasymov.moneymanager.service.telegram;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import lombok.RequiredArgsConstructor;
@@ -16,11 +22,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.rgasymov.moneymanager.domain.dto.request.TelegramAuthDto;
 import ru.rgasymov.moneymanager.domain.dto.request.TelegramWebhookDto;
-import ru.rgasymov.moneymanager.domain.entity.TelegramMessage;
+import ru.rgasymov.moneymanager.domain.entity.ReportTask;
+import ru.rgasymov.moneymanager.domain.entity.ReportTask.ReportTaskStatus;
 import ru.rgasymov.moneymanager.domain.entity.TelegramUser;
+import ru.rgasymov.moneymanager.domain.entity.TelegramUserState;
+import ru.rgasymov.moneymanager.domain.entity.TelegramUserState.ConversationState;
 import ru.rgasymov.moneymanager.domain.entity.User;
+import ru.rgasymov.moneymanager.repository.ReportTaskRepository;
 import ru.rgasymov.moneymanager.repository.TelegramMessageRepository;
 import ru.rgasymov.moneymanager.repository.TelegramUserRepository;
+import ru.rgasymov.moneymanager.repository.TelegramUserStateRepository;
 
 /**
  * Service for handling Telegram integration.
@@ -32,9 +43,20 @@ public class TelegramService {
 
   private final TelegramUserRepository telegramUserRepository;
   private final TelegramMessageRepository telegramMessageRepository;
+  private final TelegramUserStateRepository telegramUserStateRepository;
+  private final ReportTaskRepository reportTaskRepository;
+  private final TelegramBotClient telegramBotClient;
 
   @Value("${telegram.bot.token}")
   private String botToken;
+
+  @Value("${report.task.max-retries:3}")
+  private int maxRetries;
+
+  private static final Pattern DATE_RANGE_PATTERN =
+      Pattern.compile("^(\\d{2}\\.\\d{2}\\.\\d{4})-(\\d{2}\\.\\d{2}\\.\\d{4})$");
+  private static final DateTimeFormatter DATE_FORMATTER =
+      DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
   /**
    * Verify Telegram authentication data.
@@ -111,8 +133,7 @@ public class TelegramService {
    */
   @Transactional
   public void linkTelegramUser(TelegramAuthDto authDto, User user) {
-    TelegramUser telegramUser = telegramUserRepository.findById(authDto.getId())
-        .orElse(new TelegramUser());
+    TelegramUser telegramUser = telegramUserRepository.findById(authDto.getId()).orElse(new TelegramUser());
 
     telegramUser.setTelegramId(authDto.getId());
     telegramUser.setUser(user);
@@ -120,10 +141,7 @@ public class TelegramService {
     telegramUser.setLastName(authDto.getLastName());
     telegramUser.setUsername(authDto.getUsername());
     telegramUser.setPhotoUrl(authDto.getPhotoUrl());
-    telegramUser.setAuthDate(LocalDateTime.ofInstant(
-        Instant.ofEpochSecond(authDto.getAuthDate()),
-        ZoneId.systemDefault()
-    ));
+    telegramUser.setAuthDate(LocalDateTime.ofInstant(Instant.ofEpochSecond(authDto.getAuthDate()), ZoneId.systemDefault()));
 
     LocalDateTime now = LocalDateTime.now();
     if (telegramUser.getCreatedAt() == null) {
@@ -166,31 +184,112 @@ public class TelegramService {
       return;
     }
 
-    // Save message to prevent duplicate processing
-    TelegramMessage telegramMessage = TelegramMessage.builder()
-        .messageId(messageId)
-        .telegramId(telegramId)
-        .chatId(message.getChat().getId())
-        .messageText(message.getText())
-        .processedAt(LocalDateTime.now())
-        .build();
-    telegramMessageRepository.save(telegramMessage);
+    String messageText = message.getText();
+    Long chatId = message.getChat().getId();
 
-    // Log the message for now
-    log.info("Received message from Telegram user {}: {}", 
-        telegramUser.getUser().getName(), message.getText());
-    log.info("Message details - ID: {}, Chat ID: {}, From: {} {}", 
-        messageId, message.getChat().getId(), 
-        message.getFrom().getFirstName(), message.getFrom().getLastName());
+    // Get or create user state
+    TelegramUserState userState = telegramUserStateRepository.findById(telegramId).orElse(
+        TelegramUserState.builder()
+            .telegramId(telegramId)
+            .state(ConversationState.NONE)
+            .updatedAt(LocalDateTime.now())
+            .build()
+    );
+
+    // Process message based on state
+    if ("/report".equalsIgnoreCase(messageText)) {
+      handleReportCommand(telegramId, chatId, userState);
+      // Don't save this message to database
+    } else if (userState.getState() == ConversationState.AWAITING_REPORT_DATES) {
+      handleDateInput(telegramId, chatId, messageText, userState);
+      // Don't save this message to database
+    } else {
+      // For all other messages, just log and don't save to database
+      log.debug("Ignoring message from user {}: {}", telegramId, messageText);
+    }
   }
 
   /**
-   * Find Telegram user by Money Manager user ID.
-   *
-   * @param userId the user ID
-   * @return TelegramUser or null
+   * Handle /report command.
    */
-  public TelegramUser findByUserId(String userId) {
-    return telegramUserRepository.findByUserId(userId).orElse(null);
+  private void handleReportCommand(Long telegramId, Long chatId, TelegramUserState userState) {
+    log.info("Processing /report command from user {}", telegramId);
+
+    // Update user state
+    userState.setState(ConversationState.AWAITING_REPORT_DATES);
+    userState.setUpdatedAt(LocalDateTime.now());
+    telegramUserStateRepository.save(userState);
+
+    // Send instruction message
+    telegramBotClient.sendMessage(chatId, "Please enter the period in format START-END (date format DD.MM.YYYY).\nExample: 01.01.2024-31.12.2024");
+  }
+
+  /**
+   * Handle date input from user.
+   */
+  private void handleDateInput(
+      Long telegramId,
+      Long chatId,
+      String messageText,
+      TelegramUserState userState
+  ) {
+    log.info("Processing date input from user {}: {}", telegramId, messageText);
+
+    // Validate date format
+    Matcher matcher = DATE_RANGE_PATTERN.matcher(messageText.trim());
+    if (!matcher.matches()) {
+      telegramBotClient.sendMessage(chatId, "Invalid format. Please use DD.MM.YYYY-DD.MM.YYYY format.\nExample: 01.01.2024-31.12.2024");
+      return;
+    }
+
+    try {
+      // Parse dates
+      LocalDate startDate = LocalDate.parse(matcher.group(1), DATE_FORMATTER);
+      LocalDate endDate = LocalDate.parse(matcher.group(2), DATE_FORMATTER);
+
+      // Validate date range
+      if (startDate.isAfter(endDate)) {
+        telegramBotClient.sendMessage(chatId, "Error: Start date must be before end date.");
+        return;
+      }
+      if (ChronoUnit.DAYS.between(startDate, endDate) > 365) {
+        telegramBotClient.sendMessage(chatId, "Error: Date range cannot exceed 1 year (365 days).");
+        return;
+      }
+
+      ReportTask reportTask = ReportTask.builder()
+          .telegramId(telegramId)
+          .chatId(chatId)
+          .startDate(startDate)
+          .endDate(endDate)
+          .status(ReportTaskStatus.PENDING)
+          .retryCount(0)
+          .maxRetries(maxRetries)
+          .createdAt(LocalDateTime.now())
+          .nextRetryAt(LocalDateTime.now())
+          .build();
+      reportTaskRepository.save(reportTask);
+
+      // Reset user state
+      userState.setState(ConversationState.NONE);
+      userState.setUpdatedAt(LocalDateTime.now());
+      telegramUserStateRepository.save(userState);
+
+      // Send success message
+      telegramBotClient.sendMessage(
+          chatId,
+          """
+              ✅ Your report has been queued successfully!
+              
+              The report will be generated and sent to you within a few minutes.
+              Please be patient."""
+      );
+
+      log.info("Report task created successfully for user {}: {} to {}", telegramId, startDate, endDate);
+
+    } catch (DateTimeParseException e) {
+      log.warn("Failed to parse dates from user {}: {}", telegramId, messageText, e);
+      telegramBotClient.sendMessage(chatId, "Error: Invalid date format. Please use DD.MM.YYYY format.");
+    }
   }
 }
