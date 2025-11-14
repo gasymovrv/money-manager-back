@@ -40,8 +40,6 @@ public class TelegramBotClient {
    */
   public void sendMessage(Long chatId, String text) {
     try {
-      String url = String.format(TELEGRAM_API_URL, botToken, "sendMessage");
-
       MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
       body.add("chat_id", chatId);
       body.add("text", text);
@@ -52,7 +50,7 @@ public class TelegramBotClient {
       HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
 
       ResponseEntity<String> response = restTemplate.exchange(
-          url,
+          String.format(TELEGRAM_API_URL, botToken, "sendMessage"),
           HttpMethod.POST,
           requestEntity,
           String.class
@@ -77,8 +75,6 @@ public class TelegramBotClient {
    */
   public void sendDocument(Long chatId, File file, String caption) {
     try {
-      String url = String.format(TELEGRAM_API_URL, botToken, "sendDocument");
-
       byte[] fileContent = Files.readAllBytes(file.toPath());
 
       MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
@@ -100,7 +96,7 @@ public class TelegramBotClient {
       HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
 
       ResponseEntity<String> response = restTemplate.exchange(
-          url,
+          String.format(TELEGRAM_API_URL, botToken, "sendDocument"),
           HttpMethod.POST,
           requestEntity,
           String.class

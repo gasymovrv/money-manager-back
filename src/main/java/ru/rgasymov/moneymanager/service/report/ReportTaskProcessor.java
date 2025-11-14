@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import ru.rgasymov.moneymanager.domain.entity.ReportTask;
 import ru.rgasymov.moneymanager.domain.entity.ReportTask.ReportTaskStatus;
 import ru.rgasymov.moneymanager.repository.ReportTaskRepository;
@@ -22,6 +23,7 @@ import ru.rgasymov.moneymanager.service.telegram.TelegramBotClient;
 @Slf4j
 public class ReportTaskProcessor {
 
+  private final TransactionTemplate transactionTemplate;
   private final ReportTaskRepository reportTaskRepository;
   private final ReportGenerationService reportGenerationService;
   private final TelegramBotClient telegramBotClient;
@@ -94,7 +96,6 @@ public class ReportTaskProcessor {
   /**
    * Update task status in a separate transaction.
    */
-  @Transactional
   private void updateTaskStatus(ReportTask task, ReportTaskStatus status) {
     task.setStatus(status);
     task.setUpdatedAt(LocalDateTime.now());
@@ -107,7 +108,6 @@ public class ReportTaskProcessor {
    * @param task         the failed task
    * @param errorMessage the error message
    */
-  @Transactional
   private void handleFailure(ReportTask task, String errorMessage) {
     task.setRetryCount(task.getRetryCount() + 1);
     task.setErrorMessage(errorMessage);

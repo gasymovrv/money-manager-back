@@ -281,6 +281,7 @@ public class TelegramService {
       telegramUserStateRepository.save(userState);
 
       // Send success message
+      // TODO уронить этот вызов и проверить что транзакция откатила все изменения
       telegramBotClient.sendMessage(
           chatId,
           """
