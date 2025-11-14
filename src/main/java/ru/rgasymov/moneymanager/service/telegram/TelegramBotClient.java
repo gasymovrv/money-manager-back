@@ -1,5 +1,6 @@
 package ru.rgasymov.moneymanager.service.telegram;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.io.File;
 import java.nio.file.Files;
 import lombok.RequiredArgsConstructor;
@@ -40,14 +41,14 @@ public class TelegramBotClient {
    */
   public void sendMessage(Long chatId, String text) {
     try {
-      MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-      body.add("chat_id", chatId);
-      body.add("text", text);
-
-      HttpHeaders headers = new HttpHeaders();
+      var headers = new HttpHeaders();
       headers.setContentType(MediaType.APPLICATION_JSON);
-
-      HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+      record SendMessageRequest(
+          @JsonProperty("chat_id") Long chatId,
+          String text
+      ) {
+      }
+      var requestEntity = new HttpEntity<>(new SendMessageRequest(chatId, text), headers);
 
       ResponseEntity<String> response = restTemplate.exchange(
           String.format(TELEGRAM_API_URL, botToken, "sendMessage"),
@@ -69,16 +70,16 @@ public class TelegramBotClient {
   /**
    * Send document file to a chat.
    *
-   * @param chatId   the chat ID
-   * @param file     the file to send
-   * @param caption  optional caption
+   * @param chatId  the chat ID
+   * @param file    the file to send
+   * @param caption optional caption
    */
   public void sendDocument(Long chatId, File file, String caption) {
     try {
       byte[] fileContent = Files.readAllBytes(file.toPath());
 
       MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-      body.add("chat_id", chatId);
+      body.add("chat_id", chatId.toString());
       body.add("document", new ByteArrayResource(fileContent) {
         @Override
         public String getFilename() {

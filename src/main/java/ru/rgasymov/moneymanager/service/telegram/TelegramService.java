@@ -180,7 +180,11 @@ public class TelegramService {
         .orElse(null);
 
     if (telegramUser == null) {
-      log.warn("Telegram user {} not linked to Money Manager, ignoring message", telegramId);
+      telegramBotClient.sendMessage(
+          message.getChat().getId(),
+          "It looks like your Telegram account isn’t linked with Money Manager yet. " +
+              "Please log in to https://money-manager.ddns.net and click the Telegram button to link your account."
+      );
       return;
     }
 
@@ -278,7 +282,6 @@ public class TelegramService {
       telegramUserStateRepository.save(userState);
 
       // Send success message
-      // TODO уронить этот вызов и проверить что транзакция откатила все изменения
       telegramBotClient.sendMessage(
           chatId,
           """

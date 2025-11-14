@@ -38,7 +38,7 @@ public class ReportGenerationService {
     File reportFile = null;
     try {
       // Create temporary file
-      reportFile = File.createTempFile("report_" + telegramId + "_", ".png");
+      reportFile = File.createTempFile("report_" + startDate + "_" + endDate + "_", ".png");
 
       // Generate chart (stub data - replace with actual DB queries)
       JFreeChart chart = createFinancialChart(telegramId, startDate, endDate);

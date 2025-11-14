@@ -87,6 +87,7 @@ logging:
     org.springframework.web: ${LOG_LEVEL_SPRING_WEB:INFO}
     org.springframework.security: ${LOG_LEVEL_SPRING_SECURITY:INFO}
     root: ${LOG_LEVEL_ROOT:INFO}
+    ru.rgasymov.moneymanager: ${LOG_LEVEL_MONEY_MANAGER:INFO}
   file:
     name: ${LOGFILE_NAME:money-manager.log}
   logback:
@@ -116,11 +117,11 @@ telegram:
 report:
   task:
     max-retries: ${REPORT_TASK_MAX_RETRIES:3}
-    retry-delay-minutes: ${REPORT_TASK_RETRY_DELAY_MINUTES:5}
+    retry-delay-minutes: ${REPORT_TASK_RETRY_DELAY_MINUTES:3}
     batch-size: ${REPORT_TASK_BATCH_SIZE:10}
     max-parallel-tasks: ${REPORT_TASK_MAX_PARALLEL_TASKS:5}
     processor:
-      delay-ms: ${REPORT_TASK_PROCESSOR_DELAY_MS:60000}
+      delay-ms: ${REPORT_TASK_PROCESSOR_DELAY_MS:30000}
     cleanup:
       cron: ${REPORT_TASK_CLEANUP_CRON:0 0 3 * * ?}
       retention-days: ${REPORT_TASK_CLEANUP_RETENTION_DAYS:30}

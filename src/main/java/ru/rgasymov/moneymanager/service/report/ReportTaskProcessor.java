@@ -1,13 +1,16 @@
 package ru.rgasymov.moneymanager.service.report;
 
+import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import java.io.File;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -48,18 +51,27 @@ public class ReportTaskProcessor {
   // Virtual thread executor for I/O-bound report generation
   private final ExecutorService virtualThreadExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
-  // Semaphore to limit concurrent tasks
-  private final Semaphore taskSemaphore = new Semaphore(maxParallelTasks);
+  // Semaphore to limit concurrent tasks (initialized after @Value injection)
+  private Semaphore taskSemaphore;
+
+  @PostConstruct
+  public void init() {
+    taskSemaphore = new Semaphore(maxParallelTasks);
+    log.info("ReportTaskProcessor initialized with maxParallelTasks={}", maxParallelTasks);
+  }
 
   /**
-   * Process pending report tasks.
-   * Runs every minute by default.
+   * Process pending report tasks with fixed delay.
    * Uses micro-transactions and virtual threads for parallel processing.
    */
-  @Scheduled(fixedDelayString = "${report.task.processor.delay-ms:60000}")
+  @Scheduled(fixedDelayString = "${report.task.processor.delay-ms:30000}")
   public void processPendingTasks() {
+    if (taskSemaphore == null) {
+      log.info("Semaphore not initialized yet, skipping processing");
+      return;
+    }
     try {
-      List<ReportTask> processingTasks = transactionTemplate.execute(_ -> {
+      List<ReportTask> processingTasks = transactionTemplate.execute(txStatus -> {
         List<ReportTask> pendingTasks = reportTaskRepository.findTasksForProcessing(ReportTaskStatus.PENDING.name(), batchSize);
         for (ReportTask task : pendingTasks) {
           task.setStatus(ReportTaskStatus.PROCESSING);
@@ -73,14 +85,19 @@ public class ReportTaskProcessor {
         log.debug("No tasks to process");
         return;
       }
+      // Group tasks by user
+      Map<Long, List<ReportTask>> tasksByUser = processingTasks.stream()
+          .collect(Collectors.groupingBy(ReportTask::getTelegramId));
 
-      log.info("Found {} pending report tasks, submitting for parallel processing", processingTasks.size());
+      log.info("Found pending report task: {} unique users, tasks per user: {}",
+          tasksByUser.size(),
+          tasksByUser.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().size())));
 
-      // TODO We need to process parallelly only for different users
       // Submit each task to virtual thread executor
-      // Virtual threads are perfect for I/O-bound operations like report generation
-      for (ReportTask task : processingTasks) {
-        virtualThreadExecutor.submit(() -> processTaskAsync(task));
+      // Tasks from different users will run in parallel (up to maxParallelTasks)
+      // Tasks from the same user will run sequentially
+      for (var entry : tasksByUser.entrySet()) {
+        virtualThreadExecutor.submit(() -> processUserTasks(new UserTasks(entry.getKey(), entry.getValue())));
       }
 
     } catch (Exception e) {
@@ -88,40 +105,25 @@ public class ReportTaskProcessor {
     }
   }
 
-  @PreDestroy
-  public void stop() {
-    virtualThreadExecutor.shutdown();
-    try {
-      if (!virtualThreadExecutor.awaitTermination(3, TimeUnit.MINUTES)) {
-        log.warn("Workers did not terminate in time, forcing shutdownNow()");
-        virtualThreadExecutor.shutdownNow();
-        virtualThreadExecutor.awaitTermination(5, TimeUnit.SECONDS);
-      }
-    } catch (InterruptedException ie) {
-      virtualThreadExecutor.shutdownNow();
-      log.info("Executor stopped forcibly");
-      Thread.currentThread().interrupt();
-    }
-    log.info("Executor stopped successfully");
-  }
-
   /**
-   * Process a single report task asynchronously.
+   * Process user report tasks (asynchronously between users and sequentially within user).
    * Acquires semaphore to limit concurrent processing.
    *
-   * @param task the task to process
+   * @param userTasks user tasks to process
    */
-  private void processTaskAsync(ReportTask task) {
+  private void processUserTasks(UserTasks userTasks) {
     try {
       taskSemaphore.acquire();
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      log.warn("Interrupted while waiting for semaphore for task {}", task.getId());
+      log.warn("Interrupted while waiting for semaphore for user {}", userTasks.telegramId);
       return;
     }
 
     try {
-      processTask(task);
+      for (var task : userTasks.tasks) {
+        processTask(task);
+      }
     } finally {
       // Always release semaphore
       taskSemaphore.release();
@@ -138,7 +140,7 @@ public class ReportTaskProcessor {
     File reportFile = null;
     try {
       // Generate report (NO transaction - heavy I/O operation)
-      // If OOM happens here, transaction is already committed, task stays in PROCESSING
+      // If OOM or crash happens here, task stays in PROCESSING
       // Cleanup scheduler will eventually mark it as failed
       reportFile = reportGenerationService.generateReport(task.getTelegramId(), task.getStartDate(), task.getEndDate());
 
@@ -150,7 +152,7 @@ public class ReportTaskProcessor {
       );
 
       // Mark as completed (micro-transaction)
-      transactionTemplate.executeWithoutResult(_ -> {
+      transactionTemplate.executeWithoutResult(txStatus -> {
         task.setStatus(ReportTaskStatus.COMPLETED);
         task.setUpdatedAt(LocalDateTime.now());
         reportTaskRepository.save(task);
@@ -186,7 +188,7 @@ public class ReportTaskProcessor {
    * @param errorMessage the error message
    */
   private void handleFailure(ReportTask task, String errorMessage) {
-    transactionTemplate.executeWithoutResult(_ -> {
+    transactionTemplate.executeWithoutResult(txStatus -> {
       task.setRetryCount(task.getRetryCount() + 1);
       task.setErrorMessage(errorMessage);
       task.setUpdatedAt(LocalDateTime.now());
@@ -245,6 +247,23 @@ public class ReportTaskProcessor {
     }
   }
 
+  @PreDestroy
+  public void stop() {
+    virtualThreadExecutor.shutdown();
+    try {
+      if (!virtualThreadExecutor.awaitTermination(3, TimeUnit.MINUTES)) {
+        log.warn("Workers did not terminate in time, forcing shutdownNow()");
+        virtualThreadExecutor.shutdownNow();
+        virtualThreadExecutor.awaitTermination(5, TimeUnit.SECONDS);
+      }
+    } catch (InterruptedException ie) {
+      virtualThreadExecutor.shutdownNow();
+      log.info("Executor stopped forcibly");
+      Thread.currentThread().interrupt();
+    }
+    log.info("Executor stopped successfully");
+  }
+
   private void notifyUserAboutFailure(ReportTask task) {
     try {
       telegramBotClient.sendMessage(
@@ -254,5 +273,9 @@ public class ReportTaskProcessor {
     } catch (Exception e) {
       log.error("Failed to send failure notification for task {}", task.getId(), e);
     }
+  }
+
+  private record UserTasks(Long telegramId, List<ReportTask> tasks) {
+
   }
 }
