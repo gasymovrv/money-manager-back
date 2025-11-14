@@ -21,13 +21,18 @@ public interface ReportTaskRepository extends JpaRepository<ReportTask, Long> {
    * Uses SELECT FOR UPDATE SKIP LOCKED to prevent concurrent processing.
    *
    * @param status the task status
-   * @param now the current time
+   * @param limit  the batch size
    * @return list of tasks ready for processing
    */
-  @Query(value = "SELECT * FROM report_tasks WHERE status = :status AND next_retry_at <= :now FOR UPDATE SKIP LOCKED", nativeQuery = true)
+  @Query(value = """
+      SELECT * FROM report_tasks 
+      WHERE status = :status AND next_retry_at <= now() 
+      ORDER BY created_at ASC 
+      LIMIT :limit 
+      FOR UPDATE SKIP LOCKED""", nativeQuery = true)
   List<ReportTask> findTasksForProcessing(
       @Param("status") String status,
-      @Param("now") LocalDateTime now
+      @Param("limit") int limit
   );
 
   /**
@@ -41,6 +46,19 @@ public interface ReportTaskRepository extends JpaRepository<ReportTask, Long> {
   @Query("DELETE FROM ReportTask t WHERE t.status IN :statuses AND t.updatedAt < :olderThan")
   int deleteOldTasks(
       @Param("statuses") List<ReportTaskStatus> statuses,
+      @Param("olderThan") LocalDateTime olderThan
+  );
+
+  /**
+   * Find stuck tasks.
+   *
+   * @param status the status
+   * @param olderThan find tasks older than this date
+   * @return list of tasks
+   */
+  @Query(value = "SELECT * FROM report_tasks WHERE status = :status AND updated_at < :olderThan FOR UPDATE SKIP LOCKED", nativeQuery = true)
+  List<ReportTask> findStuckTasks(
+      @Param("status") String status,
       @Param("olderThan") LocalDateTime olderThan
   );
 }

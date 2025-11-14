@@ -117,6 +117,8 @@ report:
   task:
     max-retries: ${REPORT_TASK_MAX_RETRIES:3}
     retry-delay-minutes: ${REPORT_TASK_RETRY_DELAY_MINUTES:5}
+    batch-size: ${REPORT_TASK_BATCH_SIZE:10}
+    max-parallel-tasks: ${REPORT_TASK_MAX_PARALLEL_TASKS:5}
     processor:
       delay-ms: ${REPORT_TASK_PROCESSOR_DELAY_MS:60000}
     cleanup:

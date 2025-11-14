@@ -199,12 +199,9 @@ public class TelegramService {
     // Process message based on state
     if ("/report".equalsIgnoreCase(messageText)) {
       handleReportCommand(telegramId, chatId, userState);
-      // Don't save this message to database
     } else if (userState.getState() == ConversationState.AWAITING_REPORT_DATES) {
       handleDateInput(telegramId, chatId, messageText, userState);
-      // Don't save this message to database
     } else {
-      // For all other messages, just log and don't save to database
       log.debug("Ignoring message from user {}: {}", telegramId, messageText);
     }
   }

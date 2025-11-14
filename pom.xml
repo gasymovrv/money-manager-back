@@ -157,6 +157,13 @@
             <version>${poi.version}</version>
         </dependency>
 
+        <!-- JFreeChart for report generation -->
+        <dependency>
+            <groupId>org.jfree</groupId>
+            <artifactId>jfreechart</artifactId>
+            <version>1.5.6</version>
+        </dependency>
+
         <!-- Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

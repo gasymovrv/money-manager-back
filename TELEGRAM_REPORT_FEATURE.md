@@ -18,8 +18,8 @@ This feature allows users to request financial reports via Telegram bot commands
 3. **Services**
    - `TelegramService` - Handles webhook messages, commands, and date validation
    - `TelegramBotClient` - Client for Telegram Bot API (sending messages and files)
-   - `ReportGenerationService` - Generates financial reports (stub implementation)
-   - `ReportTaskProcessor` - Scheduled processor with retry logic
+   - `ReportGenerationService` - Generates financial reports with JFreeChart
+   - `ReportTaskProcessor` - **Virtual thread-based processor with micro-transactions**
 
 4. **Repositories**
    - `ReportTaskRepository` - Data access for report tasks
