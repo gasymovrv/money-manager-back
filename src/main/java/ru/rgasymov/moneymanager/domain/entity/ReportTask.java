@@ -44,6 +44,9 @@ public class ReportTask implements Serializable {
   @Column(name = "chat_id", nullable = false)
   private Long chatId;
 
+  @Column(name = "account_id", nullable = false)
+  private Long accountId;
+
   @Column(name = "start_date", nullable = false)
   private LocalDate startDate;
 

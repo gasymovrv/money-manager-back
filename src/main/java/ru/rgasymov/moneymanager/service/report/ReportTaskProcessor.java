@@ -150,7 +150,7 @@ public class ReportTaskProcessor {
       // Generate report (NO transaction - heavy I/O operation)
       // If OOM or crash happens here, task stays in PROCESSING
       // Cleanup scheduler will eventually mark it as failed
-      reportFile = reportGenerationService.generateReport(task.getTelegramId(), task.getStartDate(), task.getEndDate());
+      reportFile = reportGenerationService.generateReport(task.getTelegramId(), task.getAccountId(), task.getStartDate(), task.getEndDate());
 
       // Send report (NO transaction - I/O operation)
       telegramBotClient.sendDocumentWithRetry(
@@ -284,6 +284,5 @@ public class ReportTaskProcessor {
   }
 
   private record UserTasks(Long telegramId, List<ReportTask> tasks) {
-
   }
 }

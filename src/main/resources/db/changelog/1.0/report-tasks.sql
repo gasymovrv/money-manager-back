@@ -7,6 +7,7 @@ CREATE TABLE report_tasks (
   chat_id bigint,
   start_date date,
   end_date date,
+  account_id bigint,
   status varchar(50),
   retry_count int DEFAULT 0,
   max_retries int,
@@ -25,6 +26,7 @@ ALTER TABLE report_tasks ALTER COLUMN end_date SET NOT NULL;
 ALTER TABLE report_tasks ALTER COLUMN status SET NOT NULL;
 ALTER TABLE report_tasks ALTER COLUMN max_retries SET NOT NULL;
 ALTER TABLE report_tasks ALTER COLUMN created_at SET NOT NULL;
+ALTER TABLE report_tasks ALTER COLUMN account_id SET NOT NULL;
 
 -- changeset "Gasymov Ruslan":000001-create-index-report-tasks
 CREATE INDEX idx_report_tasks_status ON report_tasks(status);
@@ -34,6 +36,7 @@ CREATE INDEX idx_report_tasks_next_retry ON report_tasks(next_retry_at);
 CREATE TABLE telegram_user_states (
   telegram_id bigint,
   state varchar(50),
+  selected_account_id bigint,
   updated_at timestamp
 );
 

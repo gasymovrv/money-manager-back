@@ -16,6 +16,9 @@ public class TelegramWebhookDto {
 
   private TelegramMessageDto message;
 
+  @JsonProperty("callback_query")
+  private TelegramCallbackQueryDto callbackQuery;
+
   @Data
   @NoArgsConstructor
   public static class TelegramMessageDto {
@@ -29,6 +32,18 @@ public class TelegramWebhookDto {
     private Long date;
 
     private String text;
+  }
+
+  @Data
+  @NoArgsConstructor
+  public static class TelegramCallbackQueryDto {
+    private String id;
+
+    private TelegramUserDto from;
+
+    private TelegramMessageDto message;
+
+    private String data;
   }
 
   @Data
@@ -67,3 +82,4 @@ public class TelegramWebhookDto {
     private String type;
   }
 }
+

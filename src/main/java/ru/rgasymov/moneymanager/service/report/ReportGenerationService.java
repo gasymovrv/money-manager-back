@@ -22,26 +22,27 @@ import org.springframework.stereotype.Service;
 public class ReportGenerationService {
 
   /**
-   * Generate report for the specified date range and user.
+   * Generate report for the specified date range, user and account.
    * Creates a PNG chart with financial data visualization.
    * Uses memory-efficient streaming to avoid OOM issues.
    *
    * @param telegramId the Telegram user ID
+   * @param accountId  the selected account ID
    * @param startDate  the start date
    * @param endDate    the end date
    * @return the generated report file
    * @throws IOException if file creation fails
    */
-  public File generateReport(Long telegramId, LocalDate startDate, LocalDate endDate) throws IOException {
-    log.info("Generating report for user {} from {} to {}", telegramId, startDate, endDate);
+  public File generateReport(Long telegramId, Long accountId, LocalDate startDate, LocalDate endDate) throws IOException {
+    log.info("Generating report for user {} account {} from {} to {}", telegramId, accountId, startDate, endDate);
 
     File reportFile = null;
     try {
       // Create temporary file
-      reportFile = File.createTempFile("report_" + startDate + "_" + endDate + "_", ".png");
+      reportFile = File.createTempFile("report_" + startDate + "_" + endDate + "_acc_" + accountId + "_", ".png");
 
       // Generate chart (stub data - replace with actual DB queries)
-      JFreeChart chart = createFinancialChart(telegramId, startDate, endDate);
+      JFreeChart chart = createFinancialChart(telegramId, accountId, startDate, endDate);
 
       // Write chart to file with streaming to minimize memory usage
       try (FileOutputStream fos = new FileOutputStream(reportFile)) {
@@ -74,7 +75,7 @@ public class ReportGenerationService {
    * Create financial chart with stub data.
    * TODO: Replace with actual data from database.
    */
-  private JFreeChart createFinancialChart(Long telegramId, LocalDate startDate, LocalDate endDate) {
+  private JFreeChart createFinancialChart(Long telegramId, Long accountId, LocalDate startDate, LocalDate endDate) {
     // Create dataset with stub data
     DefaultCategoryDataset dataset = new DefaultCategoryDataset();
 
@@ -92,7 +93,7 @@ public class ReportGenerationService {
 
     // Create chart
     JFreeChart chart = ChartFactory.createBarChart(
-        "Financial Report: " + startDate + " to " + endDate,
+        "Financial Report (Acc " + accountId + "): " + startDate + " to " + endDate,
         "Period",
         "Amount",
         dataset,

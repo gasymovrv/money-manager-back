@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,7 +29,11 @@ import ru.rgasymov.moneymanager.exception.TelegramBotClientException;
  * <br/>
  * To send requests to the Telegram Bot API, you need to use the bot token in API url.
  * <br/>
- * <a href="https://core.telegram.org/bots/api#authorizing-your-bot">Telegram docs</a>
+ * Telegram docs:
+ * <br/>
+ * <a href="https://core.telegram.org/bots/api#authorizing-your-bot">Authorizing your bot</a>
+ * <br/>
+ * <a href="https://core.telegram.org/bots/api#available-methods">Available methods</a>
  */
 @Component
 @RequiredArgsConstructor
@@ -52,11 +57,6 @@ public class TelegramBotClient {
     try {
       var headers = new HttpHeaders();
       headers.setContentType(MediaType.APPLICATION_JSON);
-      record SendMessageRequest(
-          @JsonProperty("chat_id") Long chatId,
-          String text
-      ) {
-      }
 
       var requestEntity = new HttpEntity<>(new SendMessageRequest(chatId, text), headers);
 
@@ -76,6 +76,71 @@ public class TelegramBotClient {
       }
     } catch (Exception e) {
       log.error("Failed to send message to chat {}", chatId, e);
+      throw e;
+    }
+  }
+
+  /**
+   * Send text message with inline keyboard to a chat.
+   *
+   * @param chatId  the chat ID
+   * @param text    the message text
+   * @param buttons inline keyboard buttons (rows)
+   */
+  public void sendMessageWithInlineKeyboard(Long chatId, String text, List<List<InlineKeyboardButton>> buttons) {
+    try {
+      var headers = new HttpHeaders();
+      headers.setContentType(MediaType.APPLICATION_JSON);
+
+      var replyMarkup = new InlineKeyboardMarkup(buttons);
+      var requestEntity = new HttpEntity<>(new SendMessageWithMarkupRequest(chatId, text, replyMarkup), headers);
+
+      var statusCode = restTemplate.exchange(
+          String.format(TELEGRAM_API_URL, botToken, "sendMessage"),
+          HttpMethod.POST,
+          requestEntity,
+          String.class
+      ).getStatusCode();
+
+      if (statusCode.is5xxServerError()) {
+        throw new HttpServerErrorException(statusCode);
+      } else if (statusCode.is4xxClientError()) {
+        throw new HttpClientErrorException(statusCode);
+      } else {
+        log.debug("Sent message with inline keyboard to chat {}: {}", chatId, statusCode);
+      }
+    } catch (Exception e) {
+      log.error("Failed to send message with inline keyboard to chat {}", chatId, e);
+      throw e;
+    }
+  }
+
+  /**
+   * Answer a callback query to remove 'loading' state in Telegram client.
+   *
+   * @param callbackQueryId callback query ID from update
+   */
+  public void answerCallbackQuery(String callbackQueryId) {
+    try {
+      var headers = new HttpHeaders();
+      headers.setContentType(MediaType.APPLICATION_JSON);
+
+      var requestEntity = new HttpEntity<>(new AnswerCallbackQueryRequest(callbackQueryId), headers);
+
+      var statusCode = restTemplate.exchange(
+          String.format(TELEGRAM_API_URL, botToken, "answerCallbackQuery"),
+          HttpMethod.POST,
+          requestEntity,
+          String.class
+      ).getStatusCode();
+
+      if (statusCode.is5xxServerError()) {
+        throw new HttpServerErrorException(statusCode);
+      } else if (statusCode.is4xxClientError()) {
+        throw new HttpClientErrorException(statusCode);
+      }
+    } catch (Exception e) {
+      log.error("Failed to answer callback query {}", callbackQueryId, e);
       throw e;
     }
   }
@@ -163,5 +228,34 @@ public class TelegramBotClient {
   )
   public void sendDocumentWithRetry(Long chatId, File file, String caption) {
     sendDocument(chatId, file, caption);
+  }
+
+  private record AnswerCallbackQueryRequest(
+      @JsonProperty("callback_query_id") String callbackQueryId
+  ) {
+  }
+
+  private record SendMessageRequest(
+      @JsonProperty("chat_id") Long chatId,
+      String text
+  ) {
+  }
+
+  private record SendMessageWithMarkupRequest(
+      @JsonProperty("chat_id") Long chatId,
+      String text,
+      @JsonProperty("reply_markup") InlineKeyboardMarkup replyMarkup
+  ) {
+  }
+
+  private record InlineKeyboardMarkup(
+      @JsonProperty("inline_keyboard") List<List<InlineKeyboardButton>> inlineKeyboard
+  ) {
+  }
+
+  public record InlineKeyboardButton(
+      String text,
+      @JsonProperty("callback_data") String callbackData
+  ) {
   }
 }
