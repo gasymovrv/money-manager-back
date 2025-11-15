@@ -110,3 +110,88 @@ docker-compose up -d
 ```
 
 
+### Local Testing with Nginx and Ngrok
+
+**Important:** Telegram Login Widget requires the page to be served from the exact domain you set in BotFather. Using `localhost:3000` won't work due to CSP restrictions.
+
+
+#### Setup:
+
+This setup uses Nginx in Docker to proxy both frontend and backend through one domain.
+
+1. **Start Nginx via Docker Compose:**
+   ```bash
+   cd money-manager-back
+   docker-compose -f docker-compose-local.yml up -d
+   ```
+   Nginx will proxy requests from `http://mm.localtest.me` to your local ports.
+
+2. Use Ngrok to expose your backend:
+   ```bash
+   ngrok http http://mm.localtest.me
+   ```
+   You'll get a URL like: `https://abc123.ngrok-free.dev`
+
+3. **Configure environment variables:**
+
+   `money-manager-back/.env`:
+   ```env
+   TELEGRAM_BOT_TOKEN=your-bot-token-here
+   ALLOWED_ORIGINS=https://abc123.ngrok-free.dev
+   ```
+
+   `money-manager-front/.env`:
+   ```env
+   REACT_APP_BACKEND_HOST=https://abc123.ngrok-free.dev
+   REACT_APP_TELEGRAM_BOT_USERNAME=your-bot-username
+   ```
+   
+    Don't forget add Ngrok url as redirect_uri and allowed domain to OAuth providers (VK and Google)
+
+4. **Start backend in IDE:**
+   ```bash
+   cd money-manager-back
+   mvn spring-boot:run
+   ```
+   Backend will run on `localhost:8080`
+
+5. **Start frontend in IDE:**
+   ```bash
+   cd money-manager-front
+   npm start
+   ```
+   Frontend will run on `localhost:3000`
+
+6. **Set domain in BotFather:**
+   - Open @BotFather in Telegram
+   - Send `/setdomain`
+   - Select your bot
+   - Enter: `abc123.ngrok-free.dev`
+
+7. **Set up webhook for receiving messages:**
+
+   Set webhook:
+   ```bash
+   curl -X POST "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook" \
+   -H "Content-Type: application/json" \
+   -d '{
+    "url": "https://abc123.ngrok-free.dev/api/telegram/webhook",
+    "secret_token": "your-generated-secret-here"
+   }'
+   ```
+
+8. **Open application:**
+   Open in browser: `https://abc123.ngrok-free.dev`
+
+9. **Test Login Widget:**
+   - Login to Money Manager
+   - Click Telegram widget in header
+   - Authenticate with Telegram
+   - Check backend logs for successful account linking
+   - Send a message to your bot in Telegram and check backend logs.
+
+#### Stop Nginx:
+```bash
+cd money-manager-back
+docker-compose -f docker-compose-local.yml down
+```
