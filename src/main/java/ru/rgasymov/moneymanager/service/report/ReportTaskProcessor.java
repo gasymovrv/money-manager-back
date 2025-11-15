@@ -4,6 +4,7 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import java.io.File;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -121,6 +122,7 @@ public class ReportTaskProcessor {
     }
 
     try {
+      userTasks.tasks.sort(Comparator.comparing(ReportTask::getCreatedAt));
       for (var task : userTasks.tasks) {
         processTask(task);
       }
@@ -145,7 +147,7 @@ public class ReportTaskProcessor {
       reportFile = reportGenerationService.generateReport(task.getTelegramId(), task.getStartDate(), task.getEndDate());
 
       // Send report (NO transaction - I/O operation)
-      telegramBotClient.sendDocument(
+      telegramBotClient.sendDocumentWithRetry(
           task.getChatId(),
           reportFile,
           String.format("Financial report for period %s - %s", task.getStartDate(), task.getEndDate())
@@ -266,7 +268,7 @@ public class ReportTaskProcessor {
 
   private void notifyUserAboutFailure(ReportTask task) {
     try {
-      telegramBotClient.sendMessage(
+      telegramBotClient.sendMessageWithRetry(
           task.getChatId(),
           "Sorry, we were unable to generate your report. Please try again later or contact support if the problem persists."
       );

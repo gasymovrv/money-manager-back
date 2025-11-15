@@ -182,8 +182,8 @@ public class TelegramService {
     if (telegramUser == null) {
       telegramBotClient.sendMessage(
           message.getChat().getId(),
-          "It looks like your Telegram account isn’t linked with Money Manager yet. " +
-              "Please log in to https://money-manager.ddns.net and click the Telegram button to link your account."
+          "It looks like your Telegram account isn’t linked with Money Manager yet. "
+              + "Please log in to https://money-manager.ddns.net and click the Telegram button to link your account."
       );
       return;
     }
