@@ -59,7 +59,9 @@ public class TelegramService {
       DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
   /**
-   * Verify Telegram authentication data.
+   * Verify Telegram authentication data using bot token.
+   * <br/>
+   * <a href="https://core.telegram.org/widgets/login#checking-authorization">Telegram docs</a>
    *
    * @param authDto the authentication data
    * @return true if valid

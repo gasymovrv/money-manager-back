@@ -36,6 +36,11 @@ public class TelegramController {
 
   /**
    * Link Telegram account to current user.
+   * <br/>
+   * This endpoint is invoked by Telegram Widget from our frontend callback.
+   * Telegram provides authentication data to verify the user's identity by our bot token.
+   * <br/>
+   * <a href="https://core.telegram.org/widgets/login#linking-your-domain-to-the-bot">Telegram docs</a>
    *
    * @param authDto the Telegram authentication data
    * @return response entity
@@ -59,6 +64,12 @@ public class TelegramController {
 
   /**
    * Webhook endpoint for receiving updates from Telegram bot.
+   * Webhook should be configured in Telegram Bot API (see <a href="https://core.telegram.org/bots/api#setwebhook">setWebhook</a>).
+   * Use secret token when configuring webhook for additional security.
+   * <br/>
+   * If we throw exception here, Telegram will retry 'reasonable' times.
+   * <br/>
+   * <a href="https://core.telegram.org/bots/webhooks">Telegram docs</a>
    *
    * @param secretToken the secret token from Telegram header
    * @param webhookDto  the webhook update

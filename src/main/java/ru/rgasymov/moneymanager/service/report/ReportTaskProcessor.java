@@ -4,11 +4,13 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import java.io.File;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -97,8 +99,12 @@ public class ReportTaskProcessor {
       // Submit each task to virtual thread executor
       // Tasks from different users will run in parallel (up to maxParallelTasks)
       // Tasks from the same user will run sequentially
+      var futures = new ArrayList<Future<?>>();
       for (var entry : tasksByUser.entrySet()) {
-        virtualThreadExecutor.submit(() -> processUserTasks(new UserTasks(entry.getKey(), entry.getValue())));
+        futures.add(virtualThreadExecutor.submit(() -> processUserTasks(new UserTasks(entry.getKey(), entry.getValue()))));
+      }
+      for (var future : futures) {
+        future.get();
       }
 
     } catch (Exception e) {

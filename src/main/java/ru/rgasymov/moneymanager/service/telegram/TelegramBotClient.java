@@ -25,6 +25,10 @@ import ru.rgasymov.moneymanager.exception.TelegramBotClientException;
 
 /**
  * Client for interacting with Telegram Bot API.
+ * <br/>
+ * To send requests to the Telegram Bot API, you need to use the bot token in API url.
+ * <br/>
+ * <a href="https://core.telegram.org/bots/api#authorizing-your-bot">Telegram docs</a>
  */
 @Component
 @RequiredArgsConstructor
