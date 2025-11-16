@@ -2,13 +2,11 @@ package ru.rgasymov.moneymanager.service.telegram;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -22,7 +20,6 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
-import ru.rgasymov.moneymanager.exception.TelegramBotClientException;
 
 /**
  * Client for interacting with Telegram Bot API.
@@ -138,6 +135,8 @@ public class TelegramBotClient {
         throw new HttpServerErrorException(statusCode);
       } else if (statusCode.is4xxClientError()) {
         throw new HttpClientErrorException(statusCode);
+      } else {
+        log.debug("Answered callback query {}", callbackQueryId);
       }
     } catch (Exception e) {
       log.error("Failed to answer callback query {}", callbackQueryId, e);
@@ -154,16 +153,9 @@ public class TelegramBotClient {
    */
   public void sendDocument(Long chatId, File file, String caption) {
     try {
-      byte[] fileContent = Files.readAllBytes(file.toPath());
-
       MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
       body.add("chat_id", chatId.toString());
-      body.add("document", new ByteArrayResource(fileContent) {
-        @Override
-        public String getFilename() {
-          return file.getName();
-        }
-      });
+      body.add("document", new FileSystemResource(file));
 
       if (caption != null && !caption.isEmpty()) {
         body.add("caption", caption);
@@ -188,9 +180,6 @@ public class TelegramBotClient {
       } else {
         log.debug("Sent document to chat {}: {}", chatId, statusCode);
       }
-    } catch (IOException e) {
-      log.error("Failed to read document file for chat {}", chatId, e);
-      throw new TelegramBotClientException("Failed to read document file for chat " + chatId, e);
     } catch (Exception e) {
       log.error("Failed to send document to chat {}", chatId, e);
       throw e;
