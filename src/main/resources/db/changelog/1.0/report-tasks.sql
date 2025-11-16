@@ -37,6 +37,7 @@ CREATE TABLE telegram_user_states (
   telegram_id bigint,
   state varchar(50),
   selected_account_id bigint,
+  selected_category_id bigint,
   updated_at timestamp
 );
 

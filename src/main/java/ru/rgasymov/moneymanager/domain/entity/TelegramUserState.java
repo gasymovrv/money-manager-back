@@ -41,6 +41,9 @@ public class TelegramUserState implements Serializable {
   @Column(name = "selected_account_id")
   private Long selectedAccountId;
 
+  @Column(name = "selected_category_id")
+  private Long selectedCategoryId;
+
   @Column(name = "updated_at", nullable = false)
   private LocalDateTime updatedAt;
 
@@ -50,6 +53,10 @@ public class TelegramUserState implements Serializable {
   public enum ConversationState {
     NONE,
     AWAITING_ACCOUNT_SELECTION,
-    AWAITING_REPORT_DATES
+    AWAITING_REPORT_DATES,
+    AWAITING_EXPENSE_CATEGORY_SELECTION,
+    AWAITING_EXPENSE_INPUT,
+    AWAITING_INCOME_CATEGORY_SELECTION,
+    AWAITING_INCOME_INPUT
   }
 }
