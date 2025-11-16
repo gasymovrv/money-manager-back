@@ -12,8 +12,8 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.TreeMap;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -77,44 +77,30 @@ public class TelegramService {
   public boolean verifyTelegramAuth(TelegramAuthDto authDto) {
     try {
       // Create data check string
-      Map<String, String> dataMap = new TreeMap<>();
-      dataMap.put("auth_date", String.valueOf(authDto.getAuthDate()));
-      if (authDto.getFirstName() != null) {
-        dataMap.put("first_name", authDto.getFirstName());
-      }
-      dataMap.put("id", String.valueOf(authDto.getId()));
-      if (authDto.getLastName() != null) {
-        dataMap.put("last_name", authDto.getLastName());
-      }
-      if (authDto.getPhotoUrl() != null) {
-        dataMap.put("photo_url", authDto.getPhotoUrl());
-      }
-      if (authDto.getUsername() != null) {
-        dataMap.put("username", authDto.getUsername());
-      }
+      var dataMap = getAuthDataMap(authDto);
+      var dataCheckString = new StringBuilder();
 
-      StringBuilder dataCheckString = new StringBuilder();
-      for (Map.Entry<String, String> entry : dataMap.entrySet()) {
-        if (dataCheckString.length() > 0) {
+      for (var entry : dataMap.entrySet()) {
+        if (!dataCheckString.isEmpty()) {
           dataCheckString.append("\n");
         }
         dataCheckString.append(entry.getKey()).append("=").append(entry.getValue());
       }
 
       // Calculate secret key
-      MessageDigest digest = MessageDigest.getInstance("SHA-256");
-      byte[] secretKey = digest.digest(botToken.getBytes(StandardCharsets.UTF_8));
+      var digest = MessageDigest.getInstance("SHA-256");
+      var secretKey = digest.digest(botToken.getBytes(StandardCharsets.UTF_8));
 
       // Calculate HMAC-SHA256
-      Mac mac = Mac.getInstance("HmacSHA256");
-      SecretKeySpec secretKeySpec = new SecretKeySpec(secretKey, "HmacSHA256");
+      var mac = Mac.getInstance("HmacSHA256");
+      var secretKeySpec = new SecretKeySpec(secretKey, "HmacSHA256");
       mac.init(secretKeySpec);
-      byte[] hmac = mac.doFinal(dataCheckString.toString().getBytes(StandardCharsets.UTF_8));
+      var hmac = mac.doFinal(dataCheckString.toString().getBytes(StandardCharsets.UTF_8));
 
       // Convert to hex
-      StringBuilder hexString = new StringBuilder();
+      var hexString = new StringBuilder();
       for (byte b : hmac) {
-        String hex = Integer.toHexString(0xff & b);
+        var hex = Integer.toHexString(0xff & b);
         if (hex.length() == 1) {
           hexString.append('0');
         }
@@ -122,7 +108,7 @@ public class TelegramService {
       }
 
       // Check if auth_date is not too old (e.g., within 1 day)
-      long currentTime = System.currentTimeMillis() / 1000;
+      var currentTime = System.currentTimeMillis() / 1000;
       if (currentTime - authDto.getAuthDate() > 86400) {
         log.warn("Telegram auth data is too old");
         return false;
@@ -135,6 +121,25 @@ public class TelegramService {
     }
   }
 
+  private Map<String, String> getAuthDataMap(TelegramAuthDto authDto) {
+    Map<String, String> dataMap = new TreeMap<>();
+    dataMap.put("auth_date", String.valueOf(authDto.getAuthDate()));
+    if (authDto.getFirstName() != null) {
+      dataMap.put("first_name", authDto.getFirstName());
+    }
+    dataMap.put("id", String.valueOf(authDto.getId()));
+    if (authDto.getLastName() != null) {
+      dataMap.put("last_name", authDto.getLastName());
+    }
+    if (authDto.getPhotoUrl() != null) {
+      dataMap.put("photo_url", authDto.getPhotoUrl());
+    }
+    if (authDto.getUsername() != null) {
+      dataMap.put("username", authDto.getUsername());
+    }
+    return dataMap;
+  }
+
   /**
    * Link Telegram account to Money Manager user.
    *
@@ -143,7 +148,7 @@ public class TelegramService {
    */
   @Transactional
   public void linkTelegramUser(TelegramAuthDto authDto, User user) {
-    TelegramUser telegramUser = telegramUserRepository.findById(authDto.getId()).orElse(new TelegramUser());
+    var telegramUser = telegramUserRepository.findById(authDto.getId()).orElse(new TelegramUser());
 
     telegramUser.setTelegramId(authDto.getId());
     telegramUser.setUser(user);
@@ -153,7 +158,7 @@ public class TelegramService {
     telegramUser.setPhotoUrl(authDto.getPhotoUrl());
     telegramUser.setAuthDate(LocalDateTime.ofInstant(Instant.ofEpochSecond(authDto.getAuthDate()), ZoneId.systemDefault()));
 
-    LocalDateTime now = LocalDateTime.now();
+    var now = LocalDateTime.now();
     if (telegramUser.getCreatedAt() == null) {
       telegramUser.setCreatedAt(now);
     }
@@ -172,32 +177,26 @@ public class TelegramService {
   public void processWebhook(TelegramWebhookDto webhookDto) {
     // Handle callback queries (account selection)
     if (webhookDto.getCallbackQuery() != null) {
-      var callback = webhookDto.getCallbackQuery();
-      handleAccountSelectionCallback(callback);
+      handleAccountSelectionCallback(webhookDto.getCallbackQuery());
       return;
     }
 
     // Handle plain messages
-    if (webhookDto.getMessage() == null) {
+    var message = webhookDto.getMessage();
+    if (message == null) {
       log.debug("Webhook update {} has no message/callback, skipping", webhookDto.getUpdateId());
       return;
     }
 
-    TelegramWebhookDto.TelegramMessageDto message = webhookDto.getMessage();
-    Long messageId = message.getMessageId();
-
-    // Check for duplicate
-    if (telegramMessageRepository.existsByMessageId(messageId)) {
-      log.debug("Message {} already processed, skipping", messageId);
+    if (checkForDuplicateMessage(message.getMessageId())) {
       return;
     }
 
     // Find linked user
-    Long telegramId = message.getFrom().getId();
-    TelegramUser telegramUser = telegramUserRepository.findById(telegramId)
-        .orElse(null);
+    var telegramId = message.getFrom().getId();
+    var telegramUser = telegramUserRepository.findById(telegramId);
 
-    if (telegramUser == null) {
+    if (telegramUser.isEmpty()) {
       telegramBotClient.sendMessage(
           message.getChat().getId(),
           "It looks like your Telegram account isn’t linked with Money Manager yet. "
@@ -205,9 +204,6 @@ public class TelegramService {
       );
       return;
     }
-
-    String messageText = message.getText();
-    Long chatId = message.getChat().getId();
 
     // Get or create user state with pessimistic lock to prevent race conditions
     TelegramUserState userState = telegramUserStateRepository.findByIdWithLock(telegramId).orElse(
@@ -219,43 +215,39 @@ public class TelegramService {
     );
 
     // Process message based on state
+    var messageText = message.getText();
     if ("/report".equalsIgnoreCase(messageText)) {
-      handleReportCommand(telegramUser, chatId, userState);
+      handleReportCommand(telegramUser.get(), message, userState);
     } else if (userState.getState() == ConversationState.AWAITING_REPORT_DATES) {
-      handleDateInput(telegramId, chatId, messageText, userState);
+      handleDateInput(telegramId, message, userState);
     } else {
       log.debug("Ignoring message from user {}: {}", telegramId, messageText);
-      return;
     }
-
-    // TODO Move it before last sendMessage
-    telegramMessageRepository.save(TelegramMessage.builder()
-        .messageId(messageId)
-        .telegramId(telegramId)
-        .chatId(chatId)
-        .messageText(messageText)
-        .processedAt(LocalDateTime.now())
-        .build());
   }
 
   /**
    * Handle /report command.
+   * It leads to AWAITING_ACCOUNT_SELECTION or AWAITING_REPORT_DATES (if only one account exists).
    */
-  private void handleReportCommand(TelegramUser telegramUser, Long chatId, TelegramUserState userState) {
-    log.info("Processing /report command from user {}", telegramUser.getTelegramId());
+  private void handleReportCommand(
+      TelegramUser telegramUser,
+      TelegramWebhookDto.TelegramMessageDto message,
+      TelegramUserState userState
+  ) {
+    var telegramId = telegramUser.getTelegramId();
+    var chatId = message.getChat().getId();
+    log.info("Processing /report command from user {}", telegramId);
+    saveTelegramMessage(message.getMessageId(), telegramId, chatId, message.getText());
 
     // Warn if overwriting existing conversation state
     if (userState.getState() != ConversationState.NONE) {
-      log.warn("User {} started /report while in state {}, overwriting", telegramUser.getTelegramId(), userState.getState());
+      log.warn("User {} started /report while in state {}, overwriting", telegramId, userState.getState());
     }
-    var accounts = accountRepository.findAllByUserId(telegramUser.getUser().getId());
 
+    var accounts = accountRepository.findAllByUserId(telegramUser.getUser().getId());
     if (accounts == null || accounts.isEmpty()) {
       // No accounts
-      userState.setState(ConversationState.NONE);
-      userState.setSelectedAccountId(null);
-      userState.setUpdatedAt(LocalDateTime.now());
-      telegramUserStateRepository.save(userState);
+      saveUserState(userState, ConversationState.NONE, null);
       telegramBotClient.sendMessage(chatId, "You don't have any accounts yet. Please create an account in the app first.");
       return;
     }
@@ -263,10 +255,7 @@ public class TelegramService {
     if (accounts.size() == 1) {
       // Single account - auto-select
       var acc = accounts.getFirst();
-      userState.setSelectedAccountId(acc.getId());
-      userState.setState(ConversationState.AWAITING_REPORT_DATES);
-      userState.setUpdatedAt(LocalDateTime.now());
-      telegramUserStateRepository.save(userState);
+      saveUserState(userState, ConversationState.AWAITING_REPORT_DATES, acc.getId());
       telegramBotClient.sendMessage(chatId, PLEASE_ENTER_DATES);
       return;
     }
@@ -277,24 +266,24 @@ public class TelegramService {
       var btn = new TelegramBotClient.InlineKeyboardButton(acc.getName(), ACCOUNT_CB_PREFIX + acc.getId());
       rows.add(List.of(btn));
     }
-    userState.setState(ConversationState.AWAITING_ACCOUNT_SELECTION);
-    userState.setSelectedAccountId(null);
-    userState.setUpdatedAt(LocalDateTime.now());
-    telegramUserStateRepository.save(userState);
+    saveUserState(userState, ConversationState.AWAITING_ACCOUNT_SELECTION, null);
 
     telegramBotClient.sendMessageWithInlineKeyboard(chatId, "Select account for the report:", rows);
   }
 
   /**
    * Handle date input from user.
+   * It leads to creating report task.
    */
   private void handleDateInput(
       Long telegramId,
-      Long chatId,
-      String messageText,
+      TelegramWebhookDto.TelegramMessageDto message,
       TelegramUserState userState
   ) {
+    var chatId = message.getChat().getId();
+    var messageText = message.getText();
     log.info("Processing date input from user {}: {}", telegramId, messageText);
+    saveTelegramMessage(message.getMessageId(), telegramId, chatId, messageText);
 
     if (userState.getSelectedAccountId() == null) {
       telegramBotClient.sendMessage(chatId, "Please select an account first. Send /report to choose an account.");
@@ -302,40 +291,17 @@ public class TelegramService {
     }
 
     // Validate date format
-    Matcher matcher = DATE_RANGE_PATTERN.matcher(messageText.trim());
-    if (!matcher.matches()) {
-      telegramBotClient.sendMessage(chatId, "Invalid format. Please use DD.MM.YYYY-DD.MM.YYYY format.\nExample: 01.01.2024-31.12.2024");
+    var dateInput = validateAndGetDates(telegramId, messageText, chatId);
+    if (dateInput == null) {
       return;
     }
 
-    LocalDate startDate;
-    LocalDate endDate;
-    try {
-      // Parse dates
-      startDate = LocalDate.parse(matcher.group(1), DATE_FORMATTER);
-      endDate = LocalDate.parse(matcher.group(2), DATE_FORMATTER);
-    } catch (DateTimeParseException e) {
-      log.warn("Failed to parse dates from user {}: {}", telegramId, messageText, e);
-      telegramBotClient.sendMessage(chatId, "Error: Invalid date format. Please use DD.MM.YYYY format.");
-      return;
-    }
-
-    // Validate date range
-    if (startDate.isAfter(endDate)) {
-      telegramBotClient.sendMessage(chatId, "Error: Start date must be before end date.");
-      return;
-    }
-    if (ChronoUnit.DAYS.between(startDate, endDate) > 365) {
-      telegramBotClient.sendMessage(chatId, "Error: Date range cannot exceed 1 year (365 days).");
-      return;
-    }
-
-    ReportTask reportTask = ReportTask.builder()
+    var reportTask = ReportTask.builder()
         .telegramId(telegramId)
         .chatId(chatId)
         .accountId(userState.getSelectedAccountId())
-        .startDate(startDate)
-        .endDate(endDate)
+        .startDate(dateInput.startDate())
+        .endDate(dateInput.endDate())
         .status(ReportTaskStatus.PENDING)
         .retryCount(0)
         .maxRetries(maxRetries)
@@ -345,10 +311,7 @@ public class TelegramService {
     reportTaskRepository.save(reportTask);
 
     // Reset user state
-    userState.setState(ConversationState.NONE);
-    userState.setSelectedAccountId(null);
-    userState.setUpdatedAt(LocalDateTime.now());
-    telegramUserStateRepository.save(userState);
+    saveUserState(userState, ConversationState.NONE, null);
 
     // Send success message
     telegramBotClient.sendMessage(
@@ -360,64 +323,126 @@ public class TelegramService {
             Please be patient."""
     );
 
-    log.info("Report task created successfully for user {}: {} to {}", telegramId, startDate, endDate);
+    log.info("Report task created successfully for user {}: {} to {}", telegramId, dateInput.startDate(), dateInput.endDate());
+  }
+
+  private DateInput validateAndGetDates(Long telegramId, String messageText, Long chatId) {
+    var matcher = DATE_RANGE_PATTERN.matcher(messageText.trim());
+    if (!matcher.matches()) {
+      telegramBotClient.sendMessage(chatId, "Invalid format. Please use DD.MM.YYYY-DD.MM.YYYY format.\nExample: 01.01.2024-31.12.2024");
+      return null;
+    }
+
+    LocalDate startDate;
+    LocalDate endDate;
+    try {
+      // Parse dates
+      startDate = LocalDate.parse(matcher.group(1), DATE_FORMATTER);
+      endDate = LocalDate.parse(matcher.group(2), DATE_FORMATTER);
+    } catch (DateTimeParseException e) {
+      log.warn("Failed to parse dates from user {}: {}", telegramId, messageText, e);
+      telegramBotClient.sendMessage(chatId, "Error: Invalid date format. Please use DD.MM.YYYY format.");
+      return null;
+    }
+
+    // Validate date range
+    if (startDate.isAfter(endDate)) {
+      telegramBotClient.sendMessage(chatId, "Error: Start date must be before end date.");
+      return null;
+    }
+    if (ChronoUnit.DAYS.between(startDate, endDate) > 365) {
+      telegramBotClient.sendMessage(chatId, "Error: Date range cannot exceed 1 year (365 days).");
+      return null;
+    }
+    return new DateInput(startDate, endDate);
   }
 
   /**
    * Handle account selection callback.
+   * It leads to AWAITING_REPORT_DATES.
    */
   private void handleAccountSelectionCallback(TelegramWebhookDto.TelegramCallbackQueryDto callback) {
-    Long telegramId = callback.getFrom().getId();
-    Long chatId = callback.getMessage() != null ? callback.getMessage().getChat().getId() : null;
-
-    TelegramUser telegramUser = telegramUserRepository.findById(telegramId).orElse(null);
-    if (telegramUser == null || chatId == null) {
+    var telegramId = callback.getFrom().getId();
+    var message = callback.getMessage();
+    if (message == null) {
       return;
     }
+    var chatId = message.getChat().getId();
+    var messageId = message.getMessageId();
+
+    var telegramUser = telegramUserRepository.findById(telegramId);
+    if (telegramUser.isEmpty() || chatId == null) {
+      return;
+    }
+
+    if (checkForDuplicateMessage(messageId)) {
+      return;
+    }
+
+    saveTelegramMessage(messageId, telegramId, chatId, callback.getData());
+
+    // User state must exist before processing callback (created on report command)
+    TelegramUserState userState = telegramUserStateRepository.findByIdWithLock(telegramId).orElseThrow();
 
     var data = callback.getData();
     if (data == null || !data.startsWith(ACCOUNT_CB_PREFIX)) {
       return;
     }
 
+    var accountId = validateAndGetAccountId(data, telegramUser.get(), chatId);
+    if (accountId.isEmpty()) {
+      return;
+    }
+    saveUserState(userState, ConversationState.AWAITING_REPORT_DATES, accountId.get());
+
+    // Acknowledge callback to stop loading animation
+    telegramBotClient.answerCallbackQuery(callback.getId());
+    telegramBotClient.sendMessage(chatId, PLEASE_ENTER_DATES);
+  }
+
+  private Optional<Long> validateAndGetAccountId(String data, TelegramUser telegramUser, Long chatId) {
     Long accountId;
     try {
       accountId = Long.parseLong(data.substring(ACCOUNT_CB_PREFIX.length()));
     } catch (NumberFormatException ex) {
       log.warn("Invalid callback data from user {}: {}", telegramUser.getTelegramId(), data);
-      return;
+      return Optional.empty();
     }
 
     // Validate that account belongs to the user
     var accountOpt = accountRepository.findByIdAndUserId(accountId, telegramUser.getUser().getId());
     if (accountOpt.isEmpty()) {
       telegramBotClient.sendMessage(chatId, "Selected account is not available. Please try /report again.");
-      return;
+      return Optional.empty();
     }
+    return Optional.of(accountId);
+  }
 
-    TelegramUserState userState = telegramUserStateRepository.findByIdWithLock(telegramId).orElse(
-        TelegramUserState.builder()
-            .telegramId(telegramId)
-            .state(ConversationState.NONE)
-            .updatedAt(LocalDateTime.now())
-            .build()
-    );
+  private boolean checkForDuplicateMessage(Long messageId) {
+    if (telegramMessageRepository.existsByMessageId(messageId)) {
+      log.debug("Message {} already processed, skipping", messageId);
+      return true;
+    }
+    return false;
+  }
 
+  private void saveUserState(TelegramUserState userState, ConversationState state, Long accountId) {
     userState.setSelectedAccountId(accountId);
-    userState.setState(ConversationState.AWAITING_REPORT_DATES);
+    userState.setState(state);
     userState.setUpdatedAt(LocalDateTime.now());
     telegramUserStateRepository.save(userState);
+  }
 
-    // Acknowledge callback to stop loading animation
-    telegramBotClient.answerCallbackQuery(callback.getId());
-
+  private void saveTelegramMessage(Long messageId, Long telegramId, Long chatId, String data) {
     telegramMessageRepository.save(TelegramMessage.builder()
-        .messageId(callback.getMessage().getMessageId())
+        .messageId(messageId)
         .telegramId(telegramId)
         .chatId(chatId)
-        .messageText(callback.getData())
+        .messageText(data)
         .processedAt(LocalDateTime.now())
         .build());
-    telegramBotClient.sendMessage(chatId, PLEASE_ENTER_DATES);
+  }
+
+  private record DateInput(LocalDate startDate, LocalDate endDate) {
   }
 }
