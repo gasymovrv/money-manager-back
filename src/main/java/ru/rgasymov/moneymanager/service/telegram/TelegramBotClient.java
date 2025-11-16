@@ -10,6 +10,7 @@ import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
@@ -54,23 +55,11 @@ public class TelegramBotClient {
     try {
       var headers = new HttpHeaders();
       headers.setContentType(MediaType.APPLICATION_JSON);
-
       var requestEntity = new HttpEntity<>(new SendMessageRequest(chatId, text), headers);
 
-      var statusCode = restTemplate.exchange(
-          String.format(TELEGRAM_API_URL, botToken, "sendMessage"),
-          HttpMethod.POST,
-          requestEntity,
-          String.class
-      ).getStatusCode();
+      var statusCode = send("sendMessage", requestEntity);
 
-      if (statusCode.is5xxServerError()) {
-        throw new HttpServerErrorException(statusCode);
-      } else if (statusCode.is4xxClientError()) {
-        throw new HttpClientErrorException(statusCode);
-      } else {
-        log.debug("Sent message to chat {}: {}", chatId, statusCode);
-      }
+      log.debug("Sent message to chat {}: {}", chatId, statusCode);
     } catch (Exception e) {
       log.error("Failed to send message to chat {}", chatId, e);
       throw e;
@@ -88,24 +77,12 @@ public class TelegramBotClient {
     try {
       var headers = new HttpHeaders();
       headers.setContentType(MediaType.APPLICATION_JSON);
-
       var replyMarkup = new InlineKeyboardMarkup(buttons);
       var requestEntity = new HttpEntity<>(new SendMessageWithMarkupRequest(chatId, text, replyMarkup), headers);
 
-      var statusCode = restTemplate.exchange(
-          String.format(TELEGRAM_API_URL, botToken, "sendMessage"),
-          HttpMethod.POST,
-          requestEntity,
-          String.class
-      ).getStatusCode();
+      var statusCode = send("sendMessage", requestEntity);
 
-      if (statusCode.is5xxServerError()) {
-        throw new HttpServerErrorException(statusCode);
-      } else if (statusCode.is4xxClientError()) {
-        throw new HttpClientErrorException(statusCode);
-      } else {
-        log.debug("Sent message with inline keyboard to chat {}: {}", chatId, statusCode);
-      }
+      log.debug("Sent message with inline keyboard to chat {}: {}", chatId, statusCode);
     } catch (Exception e) {
       log.error("Failed to send message with inline keyboard to chat {}", chatId, e);
       throw e;
@@ -121,23 +98,11 @@ public class TelegramBotClient {
     try {
       var headers = new HttpHeaders();
       headers.setContentType(MediaType.APPLICATION_JSON);
-
       var requestEntity = new HttpEntity<>(new AnswerCallbackQueryRequest(callbackQueryId), headers);
 
-      var statusCode = restTemplate.exchange(
-          String.format(TELEGRAM_API_URL, botToken, "answerCallbackQuery"),
-          HttpMethod.POST,
-          requestEntity,
-          String.class
-      ).getStatusCode();
+      var statusCode = send("answerCallbackQuery", requestEntity);
 
-      if (statusCode.is5xxServerError()) {
-        throw new HttpServerErrorException(statusCode);
-      } else if (statusCode.is4xxClientError()) {
-        throw new HttpClientErrorException(statusCode);
-      } else {
-        log.debug("Answered callback query {}", callbackQueryId);
-      }
+      log.debug("Answered callback query {}: {}", callbackQueryId, statusCode);
     } catch (Exception e) {
       log.error("Failed to answer callback query {}", callbackQueryId, e);
       throw e;
@@ -163,23 +128,11 @@ public class TelegramBotClient {
 
       HttpHeaders headers = new HttpHeaders();
       headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+      var requestEntity = new HttpEntity<>(body, headers);
 
-      HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+      var statusCode = send("sendDocument", requestEntity);
 
-      var statusCode = restTemplate.exchange(
-          String.format(TELEGRAM_API_URL, botToken, "sendDocument"),
-          HttpMethod.POST,
-          requestEntity,
-          String.class
-      ).getStatusCode();
-
-      if (statusCode.is5xxServerError()) {
-        throw new HttpServerErrorException(statusCode);
-      } else if (statusCode.is4xxClientError()) {
-        throw new HttpClientErrorException(statusCode);
-      } else {
-        log.debug("Sent document to chat {}: {}", chatId, statusCode);
-      }
+      log.debug("Sent document to chat {}: {}", chatId, statusCode);
     } catch (Exception e) {
       log.error("Failed to send document to chat {}", chatId, e);
       throw e;
@@ -217,6 +170,22 @@ public class TelegramBotClient {
   )
   public void sendDocumentWithRetry(Long chatId, File file, String caption) {
     sendDocument(chatId, file, caption);
+  }
+
+  private <T> HttpStatusCode send(String endpointName, HttpEntity<T> requestEntity) {
+    var statusCode = restTemplate.exchange(
+        String.format(TELEGRAM_API_URL, botToken, endpointName),
+        HttpMethod.POST,
+        requestEntity,
+        String.class
+    ).getStatusCode();
+
+    if (statusCode.is5xxServerError()) {
+      throw new HttpServerErrorException(statusCode);
+    } else if (statusCode.is4xxClientError()) {
+      throw new HttpClientErrorException(statusCode);
+    }
+    return statusCode;
   }
 
   private record AnswerCallbackQueryRequest(
