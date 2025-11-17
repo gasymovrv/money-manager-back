@@ -39,3 +39,20 @@ ALTER TABLE telegram_messages ALTER COLUMN processed_at SET NOT NULL;
 
 -- changeset "Gasymov Ruslan":000000-create-index-telegram-messages
 CREATE INDEX idx_telegram_messages_telegram_id ON telegram_messages(telegram_id);
+
+-- changeset "Gasymov Ruslan":000000-create-table-telegram-user-states
+CREATE TABLE telegram_user_states (
+  telegram_id bigint,
+  state varchar(50),
+  selected_account_id bigint,
+  selected_category_id bigint,
+  report_start_date varchar(255),
+  report_end_date varchar(255),
+  excluded_category_ids text,
+  updated_at timestamp
+);
+
+-- changeset "Gasymov Ruslan":000000-create-constraint-telegram-user-states
+ALTER TABLE telegram_user_states ADD PRIMARY KEY (telegram_id);
+ALTER TABLE telegram_user_states ALTER COLUMN state SET NOT NULL;
+ALTER TABLE telegram_user_states ALTER COLUMN updated_at SET NOT NULL;

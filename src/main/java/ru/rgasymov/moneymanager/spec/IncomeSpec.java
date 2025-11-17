@@ -30,6 +30,11 @@ public final class IncomeSpec {
         income.get(Income_.category).get(IncomeCategory_.id).in(ids);
   }
 
+  public static Specification<Income> categoryIdNotIn(List<Long> ids) {
+    return (income, cq, cb) ->
+        cb.not(income.get(Income_.category).get(IncomeCategory_.id).in(ids));
+  }
+
   public static Specification<Income> accountIdEq(Long accountId) {
     return BaseOperationSpec.accountIdEq(accountId);
   }

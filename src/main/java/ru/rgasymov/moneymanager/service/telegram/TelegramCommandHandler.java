@@ -70,6 +70,9 @@ public class TelegramCommandHandler {
   private static final String SELECT_ACCOUNT_CB_PREFIX = "SELECT_ACC:";
   private static final String EXPENSE_CATEGORY_CB_PREFIX = "EXP_CAT:";
   private static final String INCOME_CATEGORY_CB_PREFIX = "INC_CAT:";
+  private static final String TOGGLE_EXPENSE_EXCLUDE_CB_PREFIX = "TOGGLE_EXP:";
+  private static final String TOGGLE_INCOME_EXCLUDE_CB_PREFIX = "TOGGLE_INC:";
+  private static final String GENERATE_REPORT_CB = "GENERATE_REPORT";
 
   /**
    * Handle /selectAccount command.
@@ -252,13 +255,19 @@ public class TelegramCommandHandler {
       handleExpenseCategoryCallback(callback, telegramUser.get(), userState, chatId, data);
     } else if (data.startsWith(INCOME_CATEGORY_CB_PREFIX)) {
       handleIncomeCategoryCallback(callback, telegramUser.get(), userState, chatId, data);
+    } else if (data.startsWith(TOGGLE_EXPENSE_EXCLUDE_CB_PREFIX)) {
+      handleToggleCategoryExclusionCallback(callback, telegramUser.get(), userState, chatId, data, true);
+    } else if (data.startsWith(TOGGLE_INCOME_EXCLUDE_CB_PREFIX)) {
+      handleToggleCategoryExclusionCallback(callback, telegramUser.get(), userState, chatId, data, false);
+    } else if (GENERATE_REPORT_CB.equals(data)) {
+      handleGenerateReportCallback(callback, telegramUser.get(), userState, chatId);
     }
   }
 
   /**
    * Handle report dates input from user after /report command.
    * Requires account to be selected via /selectAccount first.
-   * This command leads to creating report task.
+   * This command leads to category selection.
    */
   public void handleReportDatesInput(
       Long telegramId,
@@ -281,33 +290,13 @@ public class TelegramCommandHandler {
       return;
     }
 
-    var reportTask = ReportTask.builder()
-        .telegramId(telegramId)
-        .chatId(chatId)
-        .accountId(userState.getSelectedAccountId())
-        .startDate(dateInput.startDate())
-        .endDate(dateInput.endDate())
-        .status(ReportTaskStatus.PENDING)
-        .retryCount(0)
-        .maxRetries(maxRetries)
-        .createdAt(LocalDateTime.now())
-        .nextRetryAt(LocalDateTime.now())
-        .build();
-    reportTaskRepository.save(reportTask);
+    // Store dates in user state and show category selection
+    userState.setReportStartDate(dateInput.startDate().toString());
+    userState.setReportEndDate(dateInput.endDate().toString());
+    userState.setExcludedCategoryIds(null);
+    saveUserState(userState, ConversationState.AWAITING_REPORT_CATEGORY_SELECTION, userState.getSelectedAccountId());
 
-    saveUserState(userState, ConversationState.NONE, userState.getSelectedAccountId());
-
-    // Send success message
-    telegramBotClient.sendMessage(
-        chatId,
-        """
-            ✅ Your report has been queued successfully!
-            
-            The report will be generated and sent to you within a few minutes.
-            Please be patient."""
-    );
-
-    log.info("Report task created successfully for user {}: {} to {}", telegramId, dateInput.startDate(), dateInput.endDate());
+    showCategorySelection(telegramId, chatId, userState);
   }
 
 
@@ -457,6 +446,195 @@ public class TelegramCommandHandler {
             + "• 1000;;Salary (date will be today)\n\n"
             + "Date format: DD.MM.YYYY\n"
             + "Second and third fields are optional.");
+  }
+
+  /**
+   * Show category selection interface with checkboxes.
+   * All categories are included by default (none excluded).
+   */
+  private void showCategorySelection(Long telegramId, Long chatId, TelegramUserState userState) {
+    var accountId = userState.getSelectedAccountId();
+    var expenseCategories = expenseCategoryRepository.findAll(ExpenseCategorySpec.accountIdEq(accountId));
+    var incomeCategories = incomeCategoryRepository.findAll(IncomeCategorySpec.accountIdEq(accountId));
+
+    if (expenseCategories.isEmpty() && incomeCategories.isEmpty()) {
+      // No categories available, generate report with all data
+      createReportTask(telegramId, chatId, userState, "", "");
+      return;
+    }
+
+    var excludedIds = parseExcludedCategoryIds(userState.getExcludedCategoryIds());
+    var rows = new ArrayList<List<TelegramBotClient.InlineKeyboardButton>>();
+
+    // Add expense categories
+    if (!expenseCategories.isEmpty()) {
+      rows.add(List.of(new TelegramBotClient.InlineKeyboardButton("--- Expense Categories ---", "NONE")));
+      for (var cat : expenseCategories) {
+        var isExcluded = excludedIds.contains("E" + cat.getId());
+        var prefix = isExcluded ? "❌ " : "✅ ";
+        var btn = new TelegramBotClient.InlineKeyboardButton(
+            prefix + cat.getName(),
+            TOGGLE_EXPENSE_EXCLUDE_CB_PREFIX + cat.getId()
+        );
+        rows.add(List.of(btn));
+      }
+    }
+
+    // Add income categories
+    if (!incomeCategories.isEmpty()) {
+      rows.add(List.of(new TelegramBotClient.InlineKeyboardButton("--- Income Categories ---", "NONE")));
+      for (var cat : incomeCategories) {
+        var isExcluded = excludedIds.contains("I" + cat.getId());
+        var prefix = isExcluded ? "❌ " : "✅ ";
+        var btn = new TelegramBotClient.InlineKeyboardButton(
+            prefix + cat.getName(),
+            TOGGLE_INCOME_EXCLUDE_CB_PREFIX + cat.getId()
+        );
+        rows.add(List.of(btn));
+      }
+    }
+
+    // Add "Generate Report" button
+    rows.add(List.of(new TelegramBotClient.InlineKeyboardButton("📊 Generate Report", GENERATE_REPORT_CB)));
+
+    telegramBotClient.sendMessageWithInlineKeyboard(
+        chatId,
+        "Select categories to EXCLUDE from the report:\n✅ = Included\n❌ = Excluded\n\nClick on categories to toggle, then click 'Generate Report'.",
+        rows
+    );
+  }
+
+  /**
+   * Handle category exclusion toggle callback.
+   * Updates the excluded categories list and refreshes the UI.
+   */
+  private void handleToggleCategoryExclusionCallback(
+      TelegramWebhookDto.TelegramCallbackQueryDto callback,
+      TelegramUser telegramUser,
+      TelegramUserState userState,
+      Long chatId,
+      String data,
+      boolean isExpense
+  ) {
+    var prefix = isExpense ? TOGGLE_EXPENSE_EXCLUDE_CB_PREFIX : TOGGLE_INCOME_EXCLUDE_CB_PREFIX;
+    Long categoryId;
+    try {
+      categoryId = Long.parseLong(data.substring(prefix.length()));
+    } catch (NumberFormatException ex) {
+      log.warn("Invalid callback data from user {}: {}", telegramUser.getTelegramId(), data);
+      return;
+    }
+
+    // Toggle exclusion
+    var categoryKey = (isExpense ? "E" : "I") + categoryId;
+    var excludedIds = parseExcludedCategoryIds(userState.getExcludedCategoryIds());
+
+    if (excludedIds.contains(categoryKey)) {
+      excludedIds.remove(categoryKey);
+    } else {
+      excludedIds.add(categoryKey);
+    }
+
+    userState.setExcludedCategoryIds(String.join(",", excludedIds));
+    saveUserState(userState, ConversationState.AWAITING_REPORT_CATEGORY_SELECTION, userState.getSelectedAccountId());
+
+    telegramBotClient.answerCallbackQuery(callback.getId());
+
+    // Update the message with new button states
+    var message = callback.getMessage();
+    if (message != null) {
+      showCategorySelection(telegramUser.getTelegramId(), chatId, userState);
+    }
+  }
+
+  /**
+   * Handle "Generate Report" button click.
+   * Creates the report task with excluded categories.
+   */
+  private void handleGenerateReportCallback(
+      TelegramWebhookDto.TelegramCallbackQueryDto callback,
+      TelegramUser telegramUser,
+      TelegramUserState userState,
+      Long chatId
+  ) {
+    if (userState.getReportStartDate() == null || userState.getReportEndDate() == null) {
+      telegramBotClient.sendMessage(chatId, "Error: Date information missing. Please start over with /report.");
+      saveUserState(userState, ConversationState.NONE, userState.getSelectedAccountId());
+      return;
+    }
+
+    var excludedIds = parseExcludedCategoryIds(userState.getExcludedCategoryIds());
+    var excludedExpenseIds = new ArrayList<String>();
+    var excludedIncomeIds = new ArrayList<String>();
+
+    for (var id : excludedIds) {
+      if (id.startsWith("E")) {
+        excludedExpenseIds.add(id.substring(1));
+      } else if (id.startsWith("I")) {
+        excludedIncomeIds.add(id.substring(1));
+      }
+    }
+
+    createReportTask(
+        telegramUser.getTelegramId(),
+        chatId,
+        userState,
+        String.join(",", excludedExpenseIds),
+        String.join(",", excludedIncomeIds)
+    );
+
+    telegramBotClient.answerCallbackQuery(callback.getId());
+  }
+
+  /**
+   * Create report task with excluded categories.
+   */
+  private void createReportTask(
+      Long telegramId,
+      Long chatId,
+      TelegramUserState userState,
+      String excludedExpenseCategoryIds,
+      String excludedIncomeCategoryIds
+  ) {
+    var reportTask = ReportTask.builder()
+        .telegramId(telegramId)
+        .chatId(chatId)
+        .accountId(userState.getSelectedAccountId())
+        .startDate(LocalDate.parse(userState.getReportStartDate()))
+        .endDate(LocalDate.parse(userState.getReportEndDate()))
+        .excludedExpenseCategoryIds(excludedExpenseCategoryIds.isEmpty() ? null : excludedExpenseCategoryIds)
+        .excludedIncomeCategoryIds(excludedIncomeCategoryIds.isEmpty() ? null : excludedIncomeCategoryIds)
+        .status(ReportTaskStatus.PENDING)
+        .retryCount(0)
+        .maxRetries(maxRetries)
+        .createdAt(LocalDateTime.now())
+        .nextRetryAt(LocalDateTime.now())
+        .build();
+    reportTaskRepository.save(reportTask);
+
+    saveUserState(userState, ConversationState.NONE, userState.getSelectedAccountId());
+
+    telegramBotClient.sendMessage(
+        chatId,
+        """
+            ✅ Your report has been queued successfully!
+            
+            The report will be generated and sent to you within a few minutes.
+            Please be patient."""
+    );
+
+    log.info("Report task created successfully for user {}: {} to {}", telegramId,
+        userState.getReportStartDate(), userState.getReportEndDate());
+  }
+
+  /**
+   * Parse excluded category IDs from comma-separated string.
+   */
+  private List<String> parseExcludedCategoryIds(String excludedCategoryIds) {
+    if (excludedCategoryIds == null || excludedCategoryIds.trim().isEmpty()) {
+      return new ArrayList<>();
+    }
+    return new ArrayList<>(List.of(excludedCategoryIds.split(",")));
   }
 
   /**

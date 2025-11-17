@@ -150,7 +150,14 @@ public class ReportTaskProcessor {
       // Generate report (NO transaction - heavy I/O operation)
       // If OOM or crash happens here, task stays in PROCESSING
       // Cleanup scheduler will eventually mark it as failed
-      reportFiles = reportGenerationService.generateReport(task.getTelegramId(), task.getAccountId(), task.getStartDate(), task.getEndDate());
+      reportFiles = reportGenerationService.generateReport(
+          task.getTelegramId(),
+          task.getAccountId(),
+          task.getStartDate(),
+          task.getEndDate(),
+          task.getExcludedExpenseCategoryIds(),
+          task.getExcludedIncomeCategoryIds()
+      );
 
       // Send all 3 report charts (NO transaction - I/O operation)
       var avgExpense = reportFiles.avgMonthlyExpense();

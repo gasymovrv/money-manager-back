@@ -44,6 +44,15 @@ public class TelegramUserState implements Serializable {
   @Column(name = "selected_category_id")
   private Long selectedCategoryId;
 
+  @Column(name = "report_start_date")
+  private String reportStartDate;
+
+  @Column(name = "report_end_date")
+  private String reportEndDate;
+
+  @Column(name = "excluded_category_ids", columnDefinition = "TEXT")
+  private String excludedCategoryIds;
+
   @Column(name = "updated_at", nullable = false)
   private LocalDateTime updatedAt;
 
@@ -54,6 +63,7 @@ public class TelegramUserState implements Serializable {
     NONE,
     AWAITING_ACCOUNT_SELECTION,
     AWAITING_REPORT_DATES,
+    AWAITING_REPORT_CATEGORY_SELECTION,
     AWAITING_EXPENSE_CATEGORY_SELECTION,
     AWAITING_EXPENSE_INPUT,
     AWAITING_INCOME_CATEGORY_SELECTION,

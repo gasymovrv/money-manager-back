@@ -75,6 +75,12 @@ public class ReportTask implements Serializable {
   @Column(name = "next_retry_at")
   private LocalDateTime nextRetryAt;
 
+  @Column(name = "excluded_expense_category_ids", columnDefinition = "TEXT")
+  private String excludedExpenseCategoryIds;
+
+  @Column(name = "excluded_income_category_ids", columnDefinition = "TEXT")
+  private String excludedIncomeCategoryIds;
+
   /**
    * Status of report generation task.
    */

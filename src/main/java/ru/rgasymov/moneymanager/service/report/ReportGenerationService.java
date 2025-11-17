@@ -55,22 +55,31 @@ public class ReportGenerationService {
    * Creates 3 PNG charts with financial data visualization.
    * Uses memory-efficient streaming to avoid OOM issues.
    *
-   * @param telegramId the Telegram user ID
-   * @param accountId  the selected account ID
-   * @param startDate  the start date
-   * @param endDate    the end date
+   * @param telegramId                 the Telegram user ID
+   * @param accountId                  the selected account ID
+   * @param startDate                  the start date
+   * @param endDate                    the end date
+   * @param excludedExpenseCategoryIds comma-separated excluded expense category IDs
+   * @param excludedIncomeCategoryIds  comma-separated excluded income category IDs
    * @return the generated report files
    * @throws IOException if file creation fails
    */
   @Transactional(readOnly = true)
-  public ReportFiles generateReport(Long telegramId, Long accountId, LocalDate startDate, LocalDate endDate) throws IOException {
+  public ReportFiles generateReport(
+      Long telegramId,
+      Long accountId,
+      LocalDate startDate,
+      LocalDate endDate,
+      String excludedExpenseCategoryIds,
+      String excludedIncomeCategoryIds
+  ) throws IOException {
     log.info("Generating report for user {} account {} from {} to {}", telegramId, accountId, startDate, endDate);
 
     List<File> filesToCleanup = new ArrayList<>();
     try {
       // Fetch data from database
-      var expenses = fetchExpenses(accountId, startDate, endDate);
-      var incomes = fetchIncomes(accountId, startDate, endDate);
+      var expenses = fetchExpenses(accountId, startDate, endDate, excludedExpenseCategoryIds);
+      var incomes = fetchIncomes(accountId, startDate, endDate, excludedIncomeCategoryIds);
 
       // Calculate monthly aggregates
       var monthlyData = calculateMonthlyData(expenses, incomes, startDate, endDate);
@@ -120,17 +129,33 @@ public class ReportGenerationService {
     }
   }
 
-  private List<Expense> fetchExpenses(Long accountId, LocalDate startDate, LocalDate endDate) {
+  private List<Expense> fetchExpenses(Long accountId, LocalDate startDate, LocalDate endDate, String excludedCategoryIds) {
     var spec = ExpenseSpec.accountIdEq(accountId)
         .and(ExpenseSpec.dateGreaterThanOrEq(startDate))
         .and(ExpenseSpec.dateLessThanOrEq(endDate));
+    
+    if (excludedCategoryIds != null && !excludedCategoryIds.trim().isEmpty()) {
+      var excludedIds = parseExcludedCategoryIds(excludedCategoryIds);
+      if (!excludedIds.isEmpty()) {
+        spec = spec.and(ExpenseSpec.categoryIdNotIn(excludedIds));
+      }
+    }
+    
     return expenseRepository.findAll(spec);
   }
 
-  private List<Income> fetchIncomes(Long accountId, LocalDate startDate, LocalDate endDate) {
+  private List<Income> fetchIncomes(Long accountId, LocalDate startDate, LocalDate endDate, String excludedCategoryIds) {
     var spec = IncomeSpec.accountIdEq(accountId)
         .and(IncomeSpec.dateGreaterThanOrEq(startDate))
         .and(IncomeSpec.dateLessThanOrEq(endDate));
+    
+    if (excludedCategoryIds != null && !excludedCategoryIds.trim().isEmpty()) {
+      var excludedIds = parseExcludedCategoryIds(excludedCategoryIds);
+      if (!excludedIds.isEmpty()) {
+        spec = spec.and(IncomeSpec.categoryIdNotIn(excludedIds));
+      }
+    }
+    
     return incomeRepository.findAll(spec);
   }
 
@@ -249,7 +274,8 @@ public class ReportGenerationService {
     var plot = (PiePlot) chart.getPlot();
     plot.setBackgroundPaint(Color.WHITE);
     plot.setLabelFont(new Font("SansSerif", Font.PLAIN, 11));
-    plot.setLabelGenerator(new StandardPieSectionLabelGenerator("{0}: {2}"));
+    // {0}: Category name, {1}: Value, {2}: Percentage
+    plot.setLabelGenerator(new StandardPieSectionLabelGenerator("{0}: {1} ({2})"));
 
     return chart;
   }
@@ -275,7 +301,8 @@ public class ReportGenerationService {
     var plot = (PiePlot) chart.getPlot();
     plot.setBackgroundPaint(Color.WHITE);
     plot.setLabelFont(new Font("SansSerif", Font.PLAIN, 11));
-    plot.setLabelGenerator(new StandardPieSectionLabelGenerator("{0}: {2}"));
+    // {0}: Category name, {1}: Value, {2}: Percentage
+    plot.setLabelGenerator(new StandardPieSectionLabelGenerator("{0}: {1} ({2})"));
 
     return chart;
   }
@@ -299,6 +326,20 @@ public class ReportGenerationService {
     } else if (plot instanceof PiePlot piePlot) {
       piePlot.setDataset(null);
     }
+  }
+
+  /**
+   * Parse excluded category IDs from comma-separated string.
+   */
+  private List<Long> parseExcludedCategoryIds(String excludedCategoryIds) {
+    if (excludedCategoryIds == null || excludedCategoryIds.trim().isEmpty()) {
+      return List.of();
+    }
+    return List.of(excludedCategoryIds.split(",")).stream()
+        .map(String::trim)
+        .filter(s -> !s.isEmpty())
+        .map(Long::parseLong)
+        .toList();
   }
 
   /**

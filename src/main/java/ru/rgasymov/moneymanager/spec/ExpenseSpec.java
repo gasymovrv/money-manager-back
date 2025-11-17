@@ -30,6 +30,11 @@ public final class ExpenseSpec {
         expense.get(Expense_.category).get(ExpenseCategory_.id).in(ids);
   }
 
+  public static Specification<Expense> categoryIdNotIn(List<Long> ids) {
+    return (expense, cq, cb) ->
+        cb.not(expense.get(Expense_.category).get(ExpenseCategory_.id).in(ids));
+  }
+
   public static Specification<Expense> accountIdEq(Long accountId) {
     return BaseOperationSpec.accountIdEq(accountId);
   }
