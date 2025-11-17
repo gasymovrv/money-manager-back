@@ -18,6 +18,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import ru.rgasymov.moneymanager.domain.dto.request.OperationRequestDto;
 import ru.rgasymov.moneymanager.domain.dto.request.TelegramWebhookDto;
+import ru.rgasymov.moneymanager.domain.dto.response.OperationCategoryResponseDto;
 import ru.rgasymov.moneymanager.domain.entity.BaseOperation;
 import ru.rgasymov.moneymanager.domain.entity.BaseOperationCategory;
 import ru.rgasymov.moneymanager.domain.entity.ReportTask;
@@ -28,18 +29,16 @@ import ru.rgasymov.moneymanager.domain.entity.TelegramUserState;
 import ru.rgasymov.moneymanager.domain.entity.TelegramUserState.ConversationState;
 import ru.rgasymov.moneymanager.domain.entity.User;
 import ru.rgasymov.moneymanager.repository.AccountRepository;
-import ru.rgasymov.moneymanager.repository.ExpenseCategoryRepository;
-import ru.rgasymov.moneymanager.repository.IncomeCategoryRepository;
 import ru.rgasymov.moneymanager.repository.ReportTaskRepository;
 import ru.rgasymov.moneymanager.repository.TelegramMessageRepository;
 import ru.rgasymov.moneymanager.repository.TelegramUserRepository;
 import ru.rgasymov.moneymanager.repository.TelegramUserStateRepository;
 import ru.rgasymov.moneymanager.security.UserPrincipal;
 import ru.rgasymov.moneymanager.service.BaseOperationService;
+import ru.rgasymov.moneymanager.service.expense.ExpenseCategoryService;
 import ru.rgasymov.moneymanager.service.expense.ExpenseService;
+import ru.rgasymov.moneymanager.service.income.IncomeCategoryService;
 import ru.rgasymov.moneymanager.service.income.IncomeService;
-import ru.rgasymov.moneymanager.spec.ExpenseCategorySpec;
-import ru.rgasymov.moneymanager.spec.IncomeCategorySpec;
 
 /**
  * Service for handling Telegram integration.
@@ -54,8 +53,8 @@ public class TelegramCommandHandler {
   private final ReportTaskRepository reportTaskRepository;
   private final TelegramBotClient telegramBotClient;
   private final AccountRepository accountRepository;
-  private final ExpenseCategoryRepository expenseCategoryRepository;
-  private final IncomeCategoryRepository incomeCategoryRepository;
+  private final ExpenseCategoryService expenseCategoryService;
+  private final IncomeCategoryService incomeCategoryService;
   private final ExpenseService expenseService;
   private final IncomeService incomeService;
 
@@ -157,9 +156,7 @@ public class TelegramCommandHandler {
       return;
     }
 
-    var categories = expenseCategoryRepository.findAll(
-        ExpenseCategorySpec.accountIdEq(userState.getSelectedAccountId())
-    );
+    var categories = expenseCategoryService.findAll(userState.getSelectedAccountId());
 
     if (categories.isEmpty()) {
       saveUserState(userState, ConversationState.NONE, userState.getSelectedAccountId());
@@ -197,9 +194,7 @@ public class TelegramCommandHandler {
       return;
     }
 
-    var categories = incomeCategoryRepository.findAll(
-        IncomeCategorySpec.accountIdEq(userState.getSelectedAccountId())
-    );
+    var categories = incomeCategoryService.findAll(userState.getSelectedAccountId());
 
     if (categories.isEmpty()) {
       saveUserState(userState, ConversationState.NONE, userState.getSelectedAccountId());
@@ -400,22 +395,29 @@ public class TelegramCommandHandler {
       Long chatId,
       String data
   ) {
-    var categoryId = validateAndGetCategoryId(data, EXPENSE_CATEGORY_CB_PREFIX, telegramUser, chatId, userState.getSelectedAccountId());
-    if (categoryId.isEmpty()) {
+    var category = validateAndGetCategoryId(data, EXPENSE_CATEGORY_CB_PREFIX, telegramUser, chatId, userState.getSelectedAccountId());
+    if (category.isEmpty()) {
       return;
     }
 
-    saveUserState(userState, ConversationState.AWAITING_EXPENSE_INPUT, userState.getSelectedAccountId(), categoryId.get());
+    saveUserState(userState, ConversationState.AWAITING_EXPENSE_INPUT, userState.getSelectedAccountId(), category.get().getId());
     telegramBotClient.answerCallbackQuery(callback.getId());
     telegramBotClient.sendMessage(chatId,
-        "Please enter expense details in format:\nvalue;date;description\n\n"
-            + "Examples:\n"
-            + "• 100.50\n"
-            + "• 100.50;16.11.2025\n"
-            + "• 100.50;16.11.2025;Coffee\n"
-            + "• 100.50;;Coffee (date will be today)\n\n"
-            + "Date format: DD.MM.YYYY\n"
-            + "Second and third fields are optional.");
+        """
+            You've selected expense category '%s'.
+            
+            Please enter expense details in format:
+            value;date;description
+            
+            Examples:
+            • 100.50
+            • 100.50;16.11.2025
+            • 100.50;16.11.2025;Coffee
+            • 100.50;;Coffee (date will be today)
+            
+            Date format: DD.MM.YYYY
+            Second and third fields are optional.
+            """.formatted(category.get().getName()));
   }
 
   /**
@@ -430,22 +432,29 @@ public class TelegramCommandHandler {
       Long chatId,
       String data
   ) {
-    var categoryId = validateAndGetCategoryId(data, INCOME_CATEGORY_CB_PREFIX, telegramUser, chatId, userState.getSelectedAccountId());
-    if (categoryId.isEmpty()) {
+    var category = validateAndGetCategoryId(data, INCOME_CATEGORY_CB_PREFIX, telegramUser, chatId, userState.getSelectedAccountId());
+    if (category.isEmpty()) {
       return;
     }
 
-    saveUserState(userState, ConversationState.AWAITING_INCOME_INPUT, userState.getSelectedAccountId(), categoryId.get());
+    saveUserState(userState, ConversationState.AWAITING_INCOME_INPUT, userState.getSelectedAccountId(), category.get().getId());
     telegramBotClient.answerCallbackQuery(callback.getId());
     telegramBotClient.sendMessage(chatId,
-        "Please enter income details in format:\nvalue;date;description\n\n"
-            + "Examples:\n"
-            + "• 1000\n"
-            + "• 1000;16.11.2025\n"
-            + "• 1000;16.11.2025;Salary\n"
-            + "• 1000;;Salary (date will be today)\n\n"
-            + "Date format: DD.MM.YYYY\n"
-            + "Second and third fields are optional.");
+        """
+            You've selected income category '%s'.
+            
+            Please enter income details in format:
+            value;date;description
+            
+            Examples:
+            • 100.50
+            • 100.50;16.11.2025
+            • 100.50;16.11.2025;Coffee
+            • 100.50;;Coffee (date will be today)
+            
+            Date format: DD.MM.YYYY
+            Second and third fields are optional.
+            """.formatted(category.get().getName()));
   }
 
   /**
@@ -453,9 +462,8 @@ public class TelegramCommandHandler {
    * All categories are included by default (none excluded).
    */
   private void showCategorySelection(Long telegramId, Long chatId, TelegramUserState userState) {
-    var accountId = userState.getSelectedAccountId();
-    var expenseCategories = expenseCategoryRepository.findAll(ExpenseCategorySpec.accountIdEq(accountId));
-    var incomeCategories = incomeCategoryRepository.findAll(IncomeCategorySpec.accountIdEq(accountId));
+    var expenseCategories = expenseCategoryService.findAll(userState.getSelectedAccountId());
+    var incomeCategories = incomeCategoryService.findAll(userState.getSelectedAccountId());
 
     if (expenseCategories.isEmpty() && incomeCategories.isEmpty()) {
       // No categories available, generate report with all data
@@ -738,7 +746,7 @@ public class TelegramCommandHandler {
     return Optional.of(accountId);
   }
 
-  private Optional<Long> validateAndGetCategoryId(String data, String prefix, TelegramUser telegramUser, Long chatId, Long accountId) {
+  private Optional<OperationCategoryResponseDto> validateAndGetCategoryId(String data, String prefix, TelegramUser telegramUser, Long chatId, Long accountId) {
     Long categoryId;
     try {
       categoryId = Long.parseLong(data.substring(prefix.length()));
@@ -747,22 +755,23 @@ public class TelegramCommandHandler {
       return Optional.empty();
     }
 
+    Optional<OperationCategoryResponseDto> categoryOpt = Optional.empty();
     // Validate that category belongs to the account
     if (prefix.equals(EXPENSE_CATEGORY_CB_PREFIX)) {
-      var categoryOpt = expenseCategoryRepository.findByIdAndAccountId(categoryId, accountId);
+      categoryOpt = expenseCategoryService.findByIdAndAccountId(categoryId, accountId);
       if (categoryOpt.isEmpty()) {
         telegramBotClient.sendMessage(chatId, "Selected category is not available. Please try again.");
         return Optional.empty();
       }
     } else if (prefix.equals(INCOME_CATEGORY_CB_PREFIX)) {
-      var categoryOpt = incomeCategoryRepository.findByIdAndAccountId(categoryId, accountId);
+      categoryOpt = incomeCategoryService.findByIdAndAccountId(categoryId, accountId);
       if (categoryOpt.isEmpty()) {
         telegramBotClient.sendMessage(chatId, "Selected category is not available. Please try again.");
         return Optional.empty();
       }
     }
 
-    return Optional.of(categoryId);
+    return categoryOpt;
   }
 
   private void saveOperation(

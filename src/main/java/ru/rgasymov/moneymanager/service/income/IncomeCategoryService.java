@@ -69,6 +69,13 @@ public class IncomeCategoryService
     return result;
   }
 
+  @Cacheable(cacheNames = CacheNames.INCOME_CATEGORIES)
+  @Transactional(readOnly = true)
+  @Override
+  public Optional<OperationCategoryResponseDto> findByIdAndAccountId(Long id, Long accountId) {
+    return incomeCategoryRepository.findByIdAndAccountId(id, accountId).map(incomeCategoryMapper::toDto);
+  }
+
   @Override
   protected IncomeCategory buildNewOperationCategory(User currentUser, String name) {
     return IncomeCategory.builder()
