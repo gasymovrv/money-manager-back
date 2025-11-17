@@ -145,18 +145,35 @@ public class ReportTaskProcessor {
   private void processTask(ReportTask task) {
     log.info("Processing report task {} for user {} (thread: {})", task.getId(), task.getTelegramId(), Thread.currentThread());
 
-    File reportFile = null;
+    ReportGenerationService.ReportFiles reportFiles = null;
     try {
       // Generate report (NO transaction - heavy I/O operation)
       // If OOM or crash happens here, task stays in PROCESSING
       // Cleanup scheduler will eventually mark it as failed
-      reportFile = reportGenerationService.generateReport(task.getTelegramId(), task.getAccountId(), task.getStartDate(), task.getEndDate());
+      reportFiles = reportGenerationService.generateReport(task.getTelegramId(), task.getAccountId(), task.getStartDate(), task.getEndDate());
 
-      // Send report (NO transaction - I/O operation)
+      // Send all 3 report charts (NO transaction - I/O operation)
+      var avgExpense = reportFiles.avgMonthlyExpense();
+      var avgIncome = reportFiles.avgMonthlyIncome();
+      var periodText = String.format("%s - %s", task.getStartDate(), task.getEndDate());
+      
       telegramBotClient.sendDocumentWithRetry(
           task.getChatId(),
-          reportFile,
-          String.format("Financial report for period %s - %s", task.getStartDate(), task.getEndDate())
+          reportFiles.monthlyChartFile(),
+          String.format("📊 Monthly Report: %s\n\n💰 Avg Monthly Expense: %.2f\n💵 Avg Monthly Income: %.2f", 
+              periodText, avgExpense, avgIncome)
+      );
+
+      telegramBotClient.sendDocumentWithRetry(
+          task.getChatId(),
+          reportFiles.expenseChartFile(),
+          String.format("📉 Expenses by Category: %s", periodText)
+      );
+
+      telegramBotClient.sendDocumentWithRetry(
+          task.getChatId(),
+          reportFiles.incomeChartFile(),
+          String.format("📈 Income by Category: %s", periodText)
       );
 
       // Mark as completed (micro-transaction)
@@ -178,13 +195,21 @@ public class ReportTaskProcessor {
       }
 
     } finally {
-      // Always clean up temp file
-      if (reportFile != null && reportFile.exists()) {
-        try {
-          reportFile.delete();
-        } catch (Exception e) {
-          log.warn("Failed to delete temp file: {}", reportFile.getAbsolutePath(), e);
-        }
+      // Always clean up temp files
+      if (reportFiles != null) {
+        cleanupFile(reportFiles.monthlyChartFile());
+        cleanupFile(reportFiles.expenseChartFile());
+        cleanupFile(reportFiles.incomeChartFile());
+      }
+    }
+  }
+
+  private void cleanupFile(File file) {
+    if (file != null && file.exists()) {
+      try {
+        file.delete();
+      } catch (Exception e) {
+        log.warn("Failed to delete temp file: {}", file.getAbsolutePath(), e);
       }
     }
   }

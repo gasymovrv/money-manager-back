@@ -460,7 +460,7 @@ public class TelegramCommandHandler {
   }
 
   /**
-   * Parse operation input in format: value;date;description
+   * Parse operation input in format: value;date;description.
    */
   private OperationInput parseOperationInput(String input, Long chatId) {
     var parts = input.split(";", -1);
@@ -530,7 +530,12 @@ public class TelegramCommandHandler {
       telegramBotClient.sendMessage(chatId, "Error: Start date must be before end date.");
       return null;
     }
-    if (ChronoUnit.DAYS.between(startDate, endDate) > 365) {
+    var daysBetween = ChronoUnit.DAYS.between(startDate, endDate);
+    if (daysBetween <= 30) {
+      telegramBotClient.sendMessage(chatId, "Error: Period must be more than 1 month (30 days).");
+      return null;
+    }
+    if (daysBetween > 365) {
       telegramBotClient.sendMessage(chatId, "Error: Date range cannot exceed 1 year (365 days).");
       return null;
     }

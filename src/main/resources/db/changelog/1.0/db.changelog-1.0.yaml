@@ -9,4 +9,4 @@ databaseChangeLog:
   - include: { relativeToChangelogFile: true, file: history.sql }
   - include: { relativeToChangelogFile: true, file: indexes.sql }
   - include: { relativeToChangelogFile: true, file: telegram.sql }
-  - include: { relativeToChangelogFile: true, file: report-tasks.sql }
+  - include: { relativeToChangelogFile: true, file: report_tasks.sql }
