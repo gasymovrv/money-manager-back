@@ -54,6 +54,28 @@ public class SavingService {
   private final IncomeCategoryService incomeCategoryService;
   private final ExpenseCategoryService expenseCategoryService;
 
+  /**
+   * Searches for savings based on the provided criteria and returns paginated results.
+   *
+   * <p>The search process involves several steps:
+   * <ol>
+   *   <li>Retrieves the current user and their active account</li>
+   *   <li>Loads income and expense categories, marking selected ones as checked</li>
+   *   <li>Builds a JPA Specification from the criteria (date range, category filters, search text)</li>
+   *   <li>Executes a paginated query to find matching Saving entities</li>
+   *   <li><b>Explicitly filters operations</b> - replaces lazy-loaded collections with filtered results
+   *       (see {@link #fillOperationsExplicitly(List, SavingCriteriaDto)})</li>
+   *   <li>Maps entities to DTOs, either grouped by period or as individual days</li>
+   *   <li>Returns the result with total count and category lists</li>
+   * </ol>
+   *
+   * <p><b>Important:</b> The {@code fillOperationsExplicitly} call is crucial when filtering by categories
+   * or search text. Without it, the mapper would access lazy-loaded collections containing ALL operations
+   * for the found savings, not just the filtered ones, resulting in incorrect data in the response.
+   *
+   * @param criteria search criteria including date range, pagination, sorting, category filters, and search text
+   * @return search result containing filtered savings, total count, and category lists
+   */
   @Transactional(readOnly = true)
   public SavingSearchResultDto search(SavingCriteriaDto criteria) {
     var currentUser = userService.getCurrentUser();
@@ -176,14 +198,31 @@ public class SavingService {
   }
 
   /**
-   * Search criteria like filter by categories or search by text require to
-   * remove some results (operations) from rows (savings).
-   * <br/>
-   * This method helps to remove unnecessary operations through
-   * searching operations explicitly and replacing them in found savings.
+   * Explicitly filters and replaces the operations (incomes/expenses) in the savings entities
+   * based on the search criteria.
    *
-   * @param savings  filtered list of savings
-   * @param criteria search criteria
+   * <p><b>Why this method is necessary:</b>
+   *
+   * <p>When the main query filters Savings by category IDs or search text using JPA joins,
+   * it only determines <i>which Saving entities to return</i>, but does NOT filter the contents
+   * of their lazy-loaded {@code incomes} and {@code expenses} collections.
+   *
+   * <p>When the mapper later accesses these collections (e.g., {@code entity.getExpenses().forEach(...)}),
+   * Hibernate will load ALL operations for those savings, not just the filtered ones.
+   * This causes incorrect results where operations from unselected categories appear in the response.
+   *
+   * <p><b>Solution:</b>
+   *
+   * <p>This method explicitly queries the Income and Expense repositories with the same filters,
+   * then replaces the lazy collections in each Saving entity with only the filtered operations.
+   * This ensures that when the mapper accesses the collections, it only sees the operations
+   * that match the search criteria.
+   *
+   * <p><b>Performance note:</b> This method is only executed when category filters or search text
+   * are provided. For simple date-range queries, it returns early without additional database calls.
+   *
+   * @param savings  the list of Saving entities returned by the main query
+   * @param criteria the search criteria containing category filters and/or search text
    */
   private void fillOperationsExplicitly(List<Saving> savings,
                                         SavingCriteriaDto criteria) {
@@ -193,11 +232,13 @@ public class SavingService {
       return;
     }
 
+    var currentUser = userService.getCurrentUser();
+    var currentAccountId = currentUser.getCurrentAccount().getId();
     var savingIds = savings.stream().map(Saving::getId).toList();
     var incomeMap = new HashMap<Long, List<Income>>();
     var expenseMap = new HashMap<Long, List<Expense>>();
 
-    incomeRepository.findAll(applyIncomeCriteria(savingIds, criteria))
+    incomeRepository.findAll(applyIncomeCriteria(currentAccountId, savingIds, criteria))
         .forEach(inc -> {
           ArrayList<Income> value = new ArrayList<>();
           value.add(inc);
@@ -208,7 +249,7 @@ public class SavingService {
               });
         });
 
-    expenseRepository.findAll(applyExpenseCriteria(savingIds, criteria))
+    expenseRepository.findAll(applyExpenseCriteria(currentAccountId, savingIds, criteria))
         .forEach(exp -> {
           ArrayList<Expense> value = new ArrayList<>();
           value.add(exp);
@@ -238,6 +279,12 @@ public class SavingService {
 
     Specification<Saving> criteriaAsSpec = SavingSpec.accountIdEq(currentAccountId);
 
+    LocalDate from = criteria.getFrom();
+    LocalDate to = criteria.getTo();
+    if (from != null || to != null) {
+      criteriaAsSpec = criteriaAsSpec.and(SavingSpec.filterByDate(from, to));
+    }
+
     if (CollectionUtils.isNotEmpty(criteria.getIncomeCategoryIds())
         || CollectionUtils.isNotEmpty(criteria.getExpenseCategoryIds())
         || StringUtils.isNotBlank(criteria.getSearchText())) {
@@ -259,28 +306,24 @@ public class SavingService {
       );
     }
 
-    LocalDate from = criteria.getFrom();
-    LocalDate to = criteria.getTo();
-    if (from != null || to != null) {
-      criteriaAsSpec = criteriaAsSpec.and(SavingSpec.filterByDate(from, to));
-    }
-
     return criteriaAsSpec;
   }
 
-  private Specification<Income> applyIncomeCriteria(List<Long> savingIds,
+  private Specification<Income> applyIncomeCriteria(Long accountId,
+                                                    List<Long> savingIds,
                                                     SavingCriteriaDto criteria) {
-    Specification<Income> incomeSpec = BaseOperationSpec.savingIdIn(savingIds);
-    incomeSpec =
-        andOptionally(incomeSpec, IncomeSpec::matchBySearchText, criteria.getSearchText());
+    Specification<Income> incomeSpec = IncomeSpec.accountIdEq(accountId)
+        .and(BaseOperationSpec.savingIdIn(savingIds));
+    incomeSpec = andOptionally(incomeSpec, IncomeSpec::matchBySearchText, criteria.getSearchText());
     return andOptionally(incomeSpec, IncomeSpec::categoryIdIn, criteria.getIncomeCategoryIds());
   }
 
-  private Specification<Expense> applyExpenseCriteria(List<Long> savingIds,
+  private Specification<Expense> applyExpenseCriteria(Long accountId,
+                                                      List<Long> savingIds,
                                                       SavingCriteriaDto criteria) {
-    Specification<Expense> expenseSpec = BaseOperationSpec.savingIdIn(savingIds);
-    expenseSpec =
-        andOptionally(expenseSpec, ExpenseSpec::matchBySearchText, criteria.getSearchText());
+    Specification<Expense> expenseSpec = ExpenseSpec.accountIdEq(accountId)
+        .and(BaseOperationSpec.savingIdIn(savingIds));
+    expenseSpec = andOptionally(expenseSpec, ExpenseSpec::matchBySearchText, criteria.getSearchText());
     return andOptionally(expenseSpec, ExpenseSpec::categoryIdIn,
         criteria.getExpenseCategoryIds());
   }

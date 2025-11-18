@@ -746,7 +746,13 @@ public class TelegramCommandHandler {
     return Optional.of(accountId);
   }
 
-  private Optional<OperationCategoryResponseDto> validateAndGetCategoryId(String data, String prefix, TelegramUser telegramUser, Long chatId, Long accountId) {
+  private Optional<OperationCategoryResponseDto> validateAndGetCategoryId(
+      String data,
+      String prefix,
+      TelegramUser telegramUser,
+      Long chatId,
+      Long accountId
+  ) {
     Long categoryId;
     try {
       categoryId = Long.parseLong(data.substring(prefix.length()));

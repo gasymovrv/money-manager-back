@@ -124,7 +124,7 @@ This setup uses Nginx in Docker to proxy both frontend and backend through one d
    cd money-manager-back
    docker-compose -f docker-compose-local.yml up -d
    ```
-   Nginx will proxy requests from `http://mm.localtest.me` to your local ports.
+   Nginx will proxy requests from http://mm.localtest.me to your local ports. See Nginx configuration in [nginx-local config](nginx-local/nginx.conf)
 
 2. Use Ngrok to expose your backend:
    ```bash
