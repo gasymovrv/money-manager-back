@@ -4,4 +4,8 @@ spring:
     password: ${POSTGRES_PASSWORD}
     url: ${JDBC_URL}
 
+security:
+  token-secret: test-secret-key-that-is-at-least-256-bits-long-for-hs256-algorithm
+  token-expiration-period: 1h
+
 logging.file.name:

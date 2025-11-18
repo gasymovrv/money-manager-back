@@ -3,7 +3,7 @@ package ru.rgasymov.moneymanager;
 
 import org.testcontainers.containers.PostgreSQLContainer;
 
-class PostgresContainerInitializer {
+public class PostgresContainerInitializer {
 
   private static final String IMAGE = "postgres:16.1";
   private static PostgreSQLContainer<?> postgreSQLContainer;
