@@ -1,5 +1,6 @@
 package ru.rgasymov.moneymanager.integration;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -24,17 +25,24 @@ class TelegramControllerIntegrationTest extends BaseIntegrationTest {
 
   @Test
   void linkTelegramAccount_shouldReturnUnauthorized_whenInvalidAuth() throws Exception {
+    // Given: Verify telegram user doesn't exist
+    var initialCount = telegramUserRepository.count();
+
     var authDto = new TelegramAuthDto();
     authDto.setId(123456L);
     authDto.setFirstName("Test");
     authDto.setAuthDate(System.currentTimeMillis() / 1000);
     authDto.setHash("invalid-hash");
 
+    // When: Attempt to link with invalid hash
     mockMvc.perform(post(apiBaseUrl + "/telegram/link")
             .header("Authorization", getAuthorizationHeader())
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(authDto)))
         .andExpect(status().isUnauthorized());
+
+    // Then: No telegram user created
+    assertThat(telegramUserRepository.count()).isEqualTo(initialCount);
   }
 
   @Test
@@ -53,14 +61,18 @@ class TelegramControllerIntegrationTest extends BaseIntegrationTest {
 
   @Test
   void webhook_shouldReturnOk_whenValidRequest() throws Exception {
+    // Given: Create webhook DTO
     var webhookDto = new TelegramWebhookDto();
     webhookDto.setUpdateId(12345L);
     // Empty message - should be processed without errors
 
+    // When & Then: Process webhook
     mockMvc.perform(post(apiBaseUrl + "/telegram/webhook")
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(webhookDto)))
         .andExpect(status().isOk());
+    
+    // Webhook processing is async and doesn't modify DB immediately for empty messages
   }
 
   @Test
