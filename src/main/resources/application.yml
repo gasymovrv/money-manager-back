@@ -27,10 +27,10 @@ spring:
     time-zone: UTC
     date-format: yyyy-MM-dd HH:mm:ss
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5532/moneymanagerdb}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5532}/${POSTGRES_DB:moneymanagerdb}}
     driverClassName: org.postgresql.Driver
-    username: ${SPRING_DATASOURCE_USERNAME:mmpguser}
-    password: ${SPRING_DATASOURCE_PASSWORD:mmpgpass}
+    username: ${POSTGRES_USER:mmpguser}
+    password: ${POSTGRES_PASSWORD:mmpgpass}
   jpa:
     hibernate:
       ddl-auto: validate

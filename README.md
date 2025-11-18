@@ -30,6 +30,37 @@ Rows
 
 Data grouped by years in separate lists
 
+## Telegram Bot Integration
+Application provides Telegram bot integration for managing finances directly from Telegram:
+
+### Features
+- **Account Selection**: Link your Telegram account and select which financial account to work with
+- **Add Expenses/Incomes**: Quick expense and income entry via bot commands
+- **Financial Reports**: Generate and receive detailed financial reports with charts
+
+### Bot Commands
+- `/selectAccount` - Select or switch between your accounts
+- `/addExpense` - Add a new expense (interactive category selection)
+- `/addIncome` - Add a new income (interactive category selection)
+- `/report` - Generate financial report for a date range
+
+### Report Generation
+The bot can generate comprehensive financial reports including:
+- **Monthly aggregated data**: Bar charts showing monthly expenses and incomes
+- **Expense breakdown**: Pie charts by category
+- **Income breakdown**: Pie charts by category
+- **Category filtering**: Exclude specific categories from reports
+- **Async processing**: Reports are queued and processed with retry logic
+- **Virtual threads**: Uses Java 21 virtual threads for efficient parallel processing
+
+### Technical Details
+- Webhook-based integration for real-time message processing
+- Stateful conversation management for interactive commands
+- Pessimistic locking to prevent race conditions
+- Idempotent message processing
+- Retry logic with exponential backoff for API calls
+- Scheduled cleanup of old tasks
+
 ## Security
 OAuth2 authentication through Google or VKontakte
 
@@ -85,6 +116,124 @@ The application uses Nginx as a reverse proxy to handle HTTPS traffic. The setup
 - OAuth2 endpoints: `https://localhost/oauth2`
 
 Note: For production, replace self-signed certificates with proper SSL certificates from a trusted certificate authority.
+
+## Deployment to VPS
+
+The application is deployed at https://money-manager.ddns.net (let's say it is DNS configured for IP 1.2.3.4).
+
+### Build Artifacts
+
+1. **Build backend locally**:
+   ```bash
+   mvn clean package -Drevision=1.2.0
+   ```
+
+Note: frontend does not need this step as it will be built during Docker image creation (see next step)
+
+2. **Build Docker images** from backend root (first update `REACT_APP_BACKEND_HOST` in `.env` for money-manager-frontend, as this image has build-time variables):
+   ```bash
+   docker-compose build
+   ```
+
+### VPS Setup
+
+1. **Create project directory and generate TLS certificate + key**:
+   ```bash
+   mkdir -p money-manager/nginx/ssl
+   openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+     -keyout nginx/ssl/key.pem \
+     -out nginx/ssl/cert.pem
+   ```
+
+2. **Send docker-compose.yml and .env from Windows via PowerShell or Linux via SSH**:
+   ```bash
+   scp docker-compose.yml .env gasymovrv@1.2.3.4:~/money-manager/
+   ```
+Note: Don't forget to change `POSTGRES_PASSWORD` in `.env` file
+
+3. **Package and send Docker images from WSL (or Git Bash)**:
+   ```bash
+   cd ~
+   docker save -o money-manager-nginx.tar money-manager-nginx:1.2.0
+   docker save -o money-manager-backend.tar money-manager-backend:1.2.0
+   docker save -o money-manager-frontend.tar money-manager-frontend:1.2.0
+   scp money-manager-nginx.tar money-manager-backend.tar money-manager-frontend.tar gasymovrv@1.2.3.4:~/money-manager
+   ```
+
+4. **Load images on VPS**:
+   ```bash
+   docker load -i money-manager-nginx.tar
+   docker load -i money-manager-backend.tar
+   docker load -i money-manager-frontend.tar
+   ```
+
+5. **Start Docker containers**:
+   ```bash
+   docker-compose up -d
+   ```
+
+### Install Docker Compose (if needed)
+```bash
+# Check version on official Docker website
+sudo curl -L "https://github.com/docker/compose/releases/download/v2.36.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+```
+
+### View Container Logs
+```bash
+docker logs money-manager-money-manager-backend-1
+```
+
+### Complete Cleanup (if needed)
+```bash
+docker rm -f money-manager-backend money-manager-frontend money-manager-postgres
+docker network rm money-manager-network
+docker volume rm money-manager-postgres-data
+```
+
+### Firewall Configuration (Optional)
+```bash
+# Check firewall status
+sudo ufw status verbose
+sudo ufw status numbered
+
+# Allow SSH if not already done
+sudo ufw allow 22/tcp
+
+# Enable UFW (if not already enabled)
+sudo ufw enable
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+sudo ufw default deny incoming
+
+# Remove/deny ports
+sudo ufw delete <number>
+sudo ufw deny <port>/tcp
+
+# Check open ports on VPS
+sudo ss -tuln
+```
+
+### TLS Certificates via Certbot (Let's Encrypt)
+
+First issuance creates certificate for 3 months:
+```bash
+sudo certbot certonly --standalone -d money-manager.ddns.net
+```
+
+Certbot automatically renews certificates and stores them in `/etc/letsencrypt/live/money-manager.ddns.net` (first time it did not auto-renew, may need manual renewal).
+
+**Copy certificates to project directory and restart container**:
+```bash
+cp /etc/letsencrypt/live/money-manager.ddns.net/fullchain.pem ./money-manager/nginx/ssl/cert.pem
+cp /etc/letsencrypt/live/money-manager.ddns.net/privkey.pem ./money-manager/nginx/ssl/key.pem
+docker-compose restart money-manager-nginx
+```
+
+### Access PostgreSQL
+```bash
+docker exec -it money-manager-money-manager-postgres-1 psql -U mmpguser -d moneymanagerdb
+```
 
 ## Instructions
 ### Build and run
