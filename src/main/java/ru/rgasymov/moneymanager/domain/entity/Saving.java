@@ -6,6 +6,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
@@ -45,13 +46,15 @@ public class Saving {
   @EqualsAndHashCode.Exclude
   @ToString.Exclude
   @Fetch(FetchMode.SUBSELECT)
-  @OneToMany(mappedBy = "savingId", fetch = FetchType.LAZY)
+  @OneToMany(fetch = FetchType.LAZY)
+  @JoinColumn(name = "saving_id", referencedColumnName = "id", insertable = false, updatable = false)
   private List<Income> incomes = new ArrayList<>();
 
   @Builder.Default
   @EqualsAndHashCode.Exclude
   @ToString.Exclude
   @Fetch(FetchMode.SUBSELECT)
-  @OneToMany(mappedBy = "savingId", fetch = FetchType.LAZY)
+  @OneToMany(fetch = FetchType.LAZY)
+  @JoinColumn(name = "saving_id", referencedColumnName = "id", insertable = false, updatable = false)
   private List<Expense> expenses = new ArrayList<>();
 }

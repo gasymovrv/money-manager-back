@@ -50,6 +50,7 @@ public class SecurityConfig {
   private List<String> allowedOrigins;
 
   @Bean
+  @SuppressWarnings("removal")
   public OAuth2AccessTokenResponseClient<OAuth2AuthorizationCodeGrantRequest> accessTokenResponseClient() {
     var tokenResponseHttpMessageConverter = new OAuth2AccessTokenResponseHttpMessageConverter();
     tokenResponseHttpMessageConverter

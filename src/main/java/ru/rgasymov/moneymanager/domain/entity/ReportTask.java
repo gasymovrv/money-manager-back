@@ -12,6 +12,7 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -57,6 +58,7 @@ public class ReportTask implements Serializable {
   @Column(name = "status", nullable = false, length = 50)
   private ReportTaskStatus status;
 
+  @Builder.Default
   @Column(name = "retry_count", nullable = false)
   private Integer retryCount = 0;
 
