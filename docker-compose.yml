@@ -74,6 +74,9 @@ services:
   money-manager-postgres:
     image: postgres:17.5
     container_name: money-manager-postgres
+    # 127.0.0.1 set to close the port, only localhost can connect to it
+    # To open port:
+    #- "${POSTGRES_PORT}:5432"
     ports:
       - "127.0.0.1:${POSTGRES_PORT}:5432"
     environment:
