@@ -91,12 +91,12 @@ affinity: {}
 env:
   - name: PORT
     value: "8080"
-  - name: SPRING_DATASOURCE_USERNAME
+  - name: POSTGRES_USER
     valueFrom:
       secretKeyRef:
         name: mm-secrets
         key: postgres-user
-  - name: SPRING_DATASOURCE_PASSWORD
+  - name: POSTGRES_PASSWORD
     valueFrom:
       secretKeyRef:
         name: mm-secrets

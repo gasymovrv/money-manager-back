@@ -50,6 +50,7 @@ public class SecurityConfig {
   private List<String> allowedOrigins;
 
   @Bean
+  @SuppressWarnings("removal")
   public OAuth2AccessTokenResponseClient<OAuth2AuthorizationCodeGrantRequest> accessTokenResponseClient() {
     var tokenResponseHttpMessageConverter = new OAuth2AccessTokenResponseHttpMessageConverter();
     tokenResponseHttpMessageConverter
@@ -83,6 +84,7 @@ public class SecurityConfig {
         .authorizeHttpRequests(it -> it
             .requestMatchers(
                 apiBaseUrl + "/version",
+                apiBaseUrl + "/telegram/webhook",
                 "/swagger-ui/**",
                 "/v3/api-docs/**",
                 "/favicon.ico",

@@ -6,6 +6,7 @@ server:
     whitelabel:
       enabled: true
   port: ${PORT:8080}
+  forward-headers-strategy: framework
 
 spring:
   application:
@@ -13,6 +14,9 @@ spring:
   main:
     banner-mode: "off"
     allow-bean-definition-overriding: true
+  threads:
+    virtual:
+      enabled: true
 # Use it when you need to add secrets right in build on compile time
 #  config:
 #    import: optional:file:.env[.properties]
@@ -23,10 +27,10 @@ spring:
     time-zone: UTC
     date-format: yyyy-MM-dd HH:mm:ss
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5532/moneymanagerdb}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5532}/${POSTGRES_DB:moneymanagerdb}}
     driverClassName: org.postgresql.Driver
-    username: ${SPRING_DATASOURCE_USERNAME:mmpguser}
-    password: ${SPRING_DATASOURCE_PASSWORD:mmpgpass}
+    username: ${POSTGRES_USER:mmpguser}
+    password: ${POSTGRES_PASSWORD:mmpgpass}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -35,6 +39,7 @@ spring:
     properties:
       hibernate:
         default_batch_fetch_size: 500
+        format_sql: true
   security:
     oauth2:
       client:
@@ -70,6 +75,8 @@ spring:
     type: caffeine
 
 springdoc:
+  api-docs:
+    enabled: ${ENABLE_SWAGGER:true}
   swagger-ui:
     enabled: ${ENABLE_SWAGGER:true}
     path: /swagger-ui
@@ -81,6 +88,7 @@ logging:
     org.springframework.web: ${LOG_LEVEL_SPRING_WEB:INFO}
     org.springframework.security: ${LOG_LEVEL_SPRING_SECURITY:INFO}
     root: ${LOG_LEVEL_ROOT:INFO}
+    ru.rgasymov.moneymanager: ${LOG_LEVEL_MONEY_MANAGER:INFO}
   file:
     name: ${LOGFILE_NAME:money-manager.log}
   logback:
@@ -101,3 +109,23 @@ security:
   token-secret: ${TOKEN_SECRET:${GOOGLE_CLIENT_SECRET:token-secret}}
   token-expiration-period: ${TOKEN_EXPIRATION_PERIOD:60m}
   allowed-origins: ${ALLOWED_ORIGINS:http://localhost:3000}
+
+telegram:
+  bot:
+    token: ${TELEGRAM_BOT_TOKEN:your-bot-token-here}
+    webhook-secret: ${TELEGRAM_WEBHOOK_SECRET:}
+    retry:
+      max-attempts: ${TELEGRAM_BOT_RETRY_MAX_ATTEMPTS:3}
+      delay-seconds: ${TELEGRAM_BOT_RETRY_DELAY_SECONDS:20} # Delay in seconds between retry attempts
+
+report:
+  task:
+    max-retries: ${REPORT_TASK_MAX_RETRIES:3}
+    retry-delay-minutes: ${REPORT_TASK_RETRY_DELAY_MINUTES:3}
+    batch-size: ${REPORT_TASK_BATCH_SIZE:10}
+    max-parallel-tasks: ${REPORT_TASK_MAX_PARALLEL_TASKS:5}
+    processor:
+      delay-ms: ${REPORT_TASK_PROCESSOR_DELAY_MS:30000}
+    cleanup:
+      cron: ${REPORT_TASK_CLEANUP_CRON:0 0 3 * * ?}
+      retention-days: ${REPORT_TASK_CLEANUP_RETENTION_DAYS:30}

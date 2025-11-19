@@ -69,6 +69,13 @@ public class ExpenseCategoryService
     return result;
   }
 
+  @Cacheable(cacheNames = CacheNames.EXPENSE_CATEGORIES)
+  @Transactional(readOnly = true)
+  @Override
+  public Optional<OperationCategoryResponseDto> findByIdAndAccountId(Long id, Long accountId) {
+    return expenseCategoryRepository.findByIdAndAccountId(id, accountId).map(expenseCategoryMapper::toDto);
+  }
+
   @Override
   protected ExpenseCategory buildNewOperationCategory(User currentUser, String name) {
     return ExpenseCategory.builder()

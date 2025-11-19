@@ -1,0 +1,26 @@
+# Docker Compose for local development
+# Runs only nginx, which proxies requests to local ports
+# 
+# Usage:
+# docker-compose -f docker-compose-local.yml up -d
+# 
+# Stopping:
+# docker-compose -f docker-compose-local.yml down
+
+services:
+  nginx-local:
+    image: money-manager-nginx-local:latest
+    build:
+      context: ./nginx-local
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    extra_hosts:
+      # Allows nginx in the container to access the host
+      - "host.docker.internal:host-gateway"
+    networks:
+      - money-manager-local-network
+
+networks:
+  money-manager-local-network:
+    driver: bridge

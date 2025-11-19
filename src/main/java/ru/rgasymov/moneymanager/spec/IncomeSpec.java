@@ -1,5 +1,6 @@
 package ru.rgasymov.moneymanager.spec;
 
+import java.time.LocalDate;
 import java.util.List;
 import org.springframework.data.jpa.domain.Specification;
 import ru.rgasymov.moneymanager.domain.entity.Income;
@@ -27,5 +28,22 @@ public final class IncomeSpec {
   public static Specification<Income> categoryIdIn(List<Long> ids) {
     return (income, cq, cb) ->
         income.get(Income_.category).get(IncomeCategory_.id).in(ids);
+  }
+
+  public static Specification<Income> categoryIdNotIn(List<Long> ids) {
+    return (income, cq, cb) ->
+        cb.not(income.get(Income_.category).get(IncomeCategory_.id).in(ids));
+  }
+
+  public static Specification<Income> accountIdEq(Long accountId) {
+    return BaseOperationSpec.accountIdEq(accountId);
+  }
+
+  public static Specification<Income> dateGreaterThanOrEq(LocalDate date) {
+    return BaseOperationSpec.dateGreaterThanOrEq(date);
+  }
+
+  public static Specification<Income> dateLessThanOrEq(LocalDate date) {
+    return BaseOperationSpec.dateLessThanOrEq(date);
   }
 }

@@ -1,10 +1,12 @@
 databaseChangeLog:
-  - include: { relativeToChangelogFile: true, file: users.yaml }
-  - include: { relativeToChangelogFile: true, file: account.yaml }
-  - include: { relativeToChangelogFile: true, file: saving.yaml }
-  - include: { relativeToChangelogFile: true, file: income_category.yaml }
-  - include: { relativeToChangelogFile: true, file: expense_category.yaml }
-  - include: { relativeToChangelogFile: true, file: income.yaml }
-  - include: { relativeToChangelogFile: true, file: expense.yaml }
-  - include: { relativeToChangelogFile: true, file: history.yaml }
-  - include: { relativeToChangelogFile: true, file: indexes.yaml }
+  - include: { relativeToChangelogFile: true, file: users.sql }
+  - include: { relativeToChangelogFile: true, file: account.sql }
+  - include: { relativeToChangelogFile: true, file: saving.sql }
+  - include: { relativeToChangelogFile: true, file: income_category.sql }
+  - include: { relativeToChangelogFile: true, file: expense_category.sql }
+  - include: { relativeToChangelogFile: true, file: income.sql }
+  - include: { relativeToChangelogFile: true, file: expense.sql }
+  - include: { relativeToChangelogFile: true, file: history.sql }
+  - include: { relativeToChangelogFile: true, file: indexes.sql }
+  - include: { relativeToChangelogFile: true, file: telegram.sql }
+  - include: { relativeToChangelogFile: true, file: report_tasks.sql }

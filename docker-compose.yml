@@ -33,9 +33,11 @@ services:
       - "8081"
     environment:
       PORT: 8081
-      SPRING_DATASOURCE_URL: jdbc:postgresql://money-manager-postgres:5432/moneymanagerdb
-      SPRING_DATASOURCE_USERNAME: mmpguser
-      SPRING_DATASOURCE_PASSWORD: mmpgpass
+      POSTGRES_HOST: money-manager-postgres
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_PORT: 5432
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
@@ -66,11 +68,11 @@ services:
   money-manager-postgres:
     image: postgres:17.5
     ports:
-      - "127.0.0.1:5532:5432"
+      - "127.0.0.1:${POSTGRES_PORT}:5432"
     environment:
-      POSTGRES_USER: mmpguser
-      POSTGRES_PASSWORD: mmpgpass
-      POSTGRES_DB: moneymanagerdb
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     networks:
       - money-manager-network
     volumes:

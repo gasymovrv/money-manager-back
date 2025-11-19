@@ -3,6 +3,7 @@ package ru.rgasymov.moneymanager.service;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.ValidationException;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 import ru.rgasymov.moneymanager.domain.dto.request.OperationCategoryRequestDto;
@@ -35,6 +36,8 @@ public abstract class BaseOperationCategoryService<
 
   protected abstract List<OperationCategoryResponseDto> findAllAndSetChecked(Long accountId,
                                                                              List<Long> ids);
+
+  public abstract Optional<OperationCategoryResponseDto> findByIdAndAccountId(Long id, Long accountId);
 
   @Transactional
   public OperationCategoryResponseDto create(OperationCategoryRequestDto dto) {
