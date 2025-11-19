@@ -24,4 +24,6 @@ public interface TelegramUserStateRepository extends JpaRepository<TelegramUserS
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("SELECT s FROM TelegramUserState s WHERE s.telegramId = :telegramId")
   Optional<TelegramUserState> findByIdWithLock(@Param("telegramId") Long telegramId);
+
+  void deleteByTelegramId(Long id);
 }

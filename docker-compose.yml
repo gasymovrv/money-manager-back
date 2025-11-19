@@ -9,6 +9,7 @@
 services:
   nginx:
     image: money-manager-nginx:${VERSION}
+    container_name: money-manager-nginx
     build:
       context: ./nginx
       dockerfile: Dockerfile
@@ -25,6 +26,7 @@ services:
 
   money-manager-backend:
     image: money-manager-backend:${VERSION}
+    container_name: money-manager-backend
     build:
       pull: false
       context: .
@@ -46,11 +48,14 @@ services:
       TOKEN_EXPIRATION_PERIOD: 30d
       TOKEN_SECRET: ${TOKEN_SECRET}
       ENABLE_SWAGGER: ${ENABLE_SWAGGER}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET}
     networks:
       - money-manager-network
 
   money-manager-frontend:
     image: money-manager-frontend:${VERSION}
+    container_name: money-manager-frontend
     build:
       pull: false
       context: ../money-manager-front
@@ -60,6 +65,7 @@ services:
         NODE_ENV: production
         REACT_APP_BACKEND_HOST: ${REACT_APP_BACKEND_HOST}
         GENERATE_SOURCEMAP: false
+        REACT_APP_TELEGRAM_BOT_USERNAME: ${REACT_APP_TELEGRAM_BOT_USERNAME}
     expose:
       - "80"
     networks:
@@ -67,6 +73,7 @@ services:
 
   money-manager-postgres:
     image: postgres:17.5
+    container_name: money-manager-postgres
     ports:
       - "127.0.0.1:${POSTGRES_PORT}:5432"
     environment:

@@ -151,6 +151,12 @@ class TelegramCommandHandlerTest {
     var userState = new TelegramUserState();
     userState.setSelectedAccountId(1L);
 
+    var category = new OperationCategoryResponseDto();
+    category.setId(1L);
+    category.setName("test");
+    when(expenseCategoryService.findAll(1L)).thenReturn(List.of(category));
+    when(incomeCategoryService.findAll(1L)).thenReturn(List.of(category));
+
     handler.handleReportCommand(telegramUser, message, userState);
 
     verify(telegramBotClient).sendMessage(eq(123L), anyString());

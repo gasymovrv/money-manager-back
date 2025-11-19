@@ -98,28 +98,28 @@ public class TelegramService {
 
   /**
    * Link Telegram account to Money Manager user.
+   * <br/>
+   * If the same Telegram user signs in with a different Money Manager user,
+   * delete the telegram user state to prevent access to the previous user's data.
    *
    * @param authDto the authentication data
    * @param user    the Money Manager user
    */
   @Transactional
   public void linkTelegramUser(TelegramAuthDto authDto, User user) {
-    var telegramUser = telegramUserRepository.findById(authDto.getId()).orElse(new TelegramUser());
+    var telegramUserOpt = telegramUserRepository.findByIdWithLock(authDto.getId());
+    TelegramUser telegramUser;
 
-    telegramUser.setTelegramId(authDto.getId());
-    telegramUser.setUser(user);
-    telegramUser.setFirstName(authDto.getFirstName());
-    telegramUser.setLastName(authDto.getLastName());
-    telegramUser.setUsername(authDto.getUsername());
-    telegramUser.setPhotoUrl(authDto.getPhotoUrl());
-    telegramUser.setAuthDate(LocalDateTime.ofInstant(Instant.ofEpochSecond(authDto.getAuthDate()), ZoneId.systemDefault()));
-
-    var now = LocalDateTime.now();
-    if (telegramUser.getCreatedAt() == null) {
-      telegramUser.setCreatedAt(now);
+    if (telegramUserOpt.isEmpty()) {
+      telegramUser = new TelegramUser();
+    } else {
+      telegramUser = telegramUserOpt.get();
+      if (!telegramUser.getUser().getId().equals(user.getId())) {
+        telegramUserStateRepository.deleteByTelegramId(authDto.getId());
+      }
     }
-    telegramUser.setUpdatedAt(now);
 
+    fillTelegramUser(authDto, user, telegramUser);
     telegramUserRepository.save(telegramUser);
     log.info("Linked Telegram user {} to Money Manager user {}", authDto.getId(), user.getId());
   }
@@ -209,5 +209,21 @@ public class TelegramService {
       dataMap.put("username", authDto.getUsername());
     }
     return dataMap;
+  }
+
+  private void fillTelegramUser(TelegramAuthDto authDto, User user, TelegramUser telegramUser) {
+    telegramUser.setTelegramId(authDto.getId());
+    telegramUser.setUser(user);
+    telegramUser.setFirstName(authDto.getFirstName());
+    telegramUser.setLastName(authDto.getLastName());
+    telegramUser.setUsername(authDto.getUsername());
+    telegramUser.setPhotoUrl(authDto.getPhotoUrl());
+    telegramUser.setAuthDate(LocalDateTime.ofInstant(Instant.ofEpochSecond(authDto.getAuthDate()), ZoneId.systemDefault()));
+
+    var now = LocalDateTime.now();
+    if (telegramUser.getCreatedAt() == null) {
+      telegramUser.setCreatedAt(now);
+    }
+    telegramUser.setUpdatedAt(now);
   }
 }

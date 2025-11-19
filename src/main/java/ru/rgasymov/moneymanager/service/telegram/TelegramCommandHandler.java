@@ -126,12 +126,20 @@ public class TelegramCommandHandler {
     log.info("Processing /report command from user {}", telegramId);
     saveTelegramMessage(message.getMessageId(), telegramId, chatId, message.getText());
 
-    if (userState.getSelectedAccountId() == null) {
+    var accountId = userState.getSelectedAccountId();
+    if (accountId == null) {
       telegramBotClient.sendMessage(chatId, SELECT_ACCOUNT_FIRST);
       return;
     }
 
-    saveUserState(userState, ConversationState.AWAITING_REPORT_DATES, userState.getSelectedAccountId());
+    var expCategories = expenseCategoryService.findAll(accountId);
+    var incCategories = incomeCategoryService.findAll(accountId);
+    if (expCategories.isEmpty() && incCategories.isEmpty()) {
+      telegramBotClient.sendMessage(chatId, "You don't have any expense/income categories yet. Please create one in the app first.");
+      return;
+    }
+
+    saveUserState(userState, ConversationState.AWAITING_REPORT_DATES, accountId);
     telegramBotClient.sendMessage(chatId, "Please enter the period in format START-END (date format DD.MM.YYYY).\nExample: 01.01.2024-31.12.2024");
   }
 

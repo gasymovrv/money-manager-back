@@ -98,7 +98,7 @@ class TelegramServiceTest {
     authDto.setPhotoUrl("http://example.com/photo.jpg");
     authDto.setAuthDate(System.currentTimeMillis() / 1000);
 
-    when(telegramUserRepository.findById(123456L)).thenReturn(Optional.empty());
+    when(telegramUserRepository.findByIdWithLock(123456L)).thenReturn(Optional.empty());
 
     telegramService.linkTelegramUser(authDto, user);
 
@@ -118,6 +118,7 @@ class TelegramServiceTest {
     var user = createTestUser();
     var existingTelegramUser = new TelegramUser();
     existingTelegramUser.setTelegramId(123456L);
+    existingTelegramUser.setUser(user);
 
     var authDto = new TelegramAuthDto();
     authDto.setId(123456L);
@@ -127,13 +128,44 @@ class TelegramServiceTest {
     authDto.setPhotoUrl("http://example.com/photo.jpg");
     authDto.setAuthDate(System.currentTimeMillis() / 1000);
 
-    when(telegramUserRepository.findById(123456L)).thenReturn(Optional.of(existingTelegramUser));
+    when(telegramUserRepository.findByIdWithLock(123456L)).thenReturn(Optional.of(existingTelegramUser));
 
     telegramService.linkTelegramUser(authDto, user);
 
     verify(telegramUserRepository).save(existingTelegramUser);
     assertThat(existingTelegramUser.getFirstName()).isEqualTo("John");
     assertThat(existingTelegramUser.getUser()).isEqualTo(user);
+  }
+
+  @Test
+  void linkTelegramUser_shouldDeleteState_whenLinkingToDifferentUser() {
+    var previousUser = createTestUser();
+    var newUser = User.builder()
+        .id("user456")
+        .email("newuser@example.com")
+        .name("New User")
+        .provider(AuthProviders.GOOGLE)
+        .build();
+
+    var existingTelegramUser = new TelegramUser();
+    existingTelegramUser.setTelegramId(123456L);
+    existingTelegramUser.setUser(previousUser);
+
+    var authDto = new TelegramAuthDto();
+    authDto.setId(123456L);
+    authDto.setFirstName("John");
+    authDto.setLastName("Doe");
+    authDto.setUsername("johndoe");
+    authDto.setPhotoUrl("http://example.com/photo.jpg");
+    authDto.setAuthDate(System.currentTimeMillis() / 1000);
+
+    when(telegramUserRepository.findByIdWithLock(123456L)).thenReturn(Optional.of(existingTelegramUser));
+
+    telegramService.linkTelegramUser(authDto, newUser);
+
+    verify(telegramUserStateRepository).deleteByTelegramId(123456L);
+    verify(telegramUserRepository).save(existingTelegramUser);
+    assertThat(existingTelegramUser.getUser()).isEqualTo(newUser);
   }
 
   @Test

@@ -61,6 +61,27 @@ The bot can generate comprehensive financial reports including:
 - Retry logic with exponential backoff for API calls
 - Scheduled cleanup of old tasks
 
+### Telegram Bot Setup
+1. Create a new bot on Telegram using [@BotFather](https://t.me/BotFather) and get the bot token (TELEGRAM_BOT_TOKEN env)
+2. Set the webhook URL to the bot's webhook endpoint with secret_token (TELEGRAM_WEBHOOK_SECRET env).
+
+   You can use curl for this:
+   ```bash
+   curl -X POST "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook" \
+      -H "Content-Type: application/json" \
+      -d '{ 
+        "url": "https://money-manager.ddns.net/api/telegram/webhook",
+        "secret_token": "<YOUR_SECRET_TOKEN>"
+      }'
+   ```
+   Secret token is used to verify the authenticity of the webhook request, can be generated like this:
+   ```bash
+   openssl rand -base64 32
+   ```
+3. Set Money Manager domain using [@BotFather](https://t.me/BotFather) command `/setdomain`.
+
+    Choose Money Manager bot and set domain to `money-manager.ddns.net`
+
 ## Security
 OAuth2 authentication through Google or VKontakte
 
@@ -125,7 +146,7 @@ The application is deployed at https://money-manager.ddns.net (let's say it is D
 
 1. **Build backend locally**:
    ```bash
-   mvn clean package -Drevision=1.2.0
+   mvn clean package -Drevision=2.0.0
    ```
 
 Note: frontend does not need this step as it will be built during Docker image creation (see next step)
@@ -137,7 +158,7 @@ Note: frontend does not need this step as it will be built during Docker image c
 
 ### VPS Setup
 
-1. **Create project directory and generate TLS certificate + key**:
+1. **Create project directory and generate TLS certificate + key** (or use [Certbot](readme#TLS-Certificates-via-Certbot-Lets-Encrypt)):
    ```bash
    mkdir -p money-manager/nginx/ssl
    openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
@@ -149,19 +170,20 @@ Note: frontend does not need this step as it will be built during Docker image c
    ```bash
    scp docker-compose.yml .env gasymovrv@1.2.3.4:~/money-manager/
    ```
-Note: Don't forget to change `POSTGRES_PASSWORD` in `.env` file
+Note: Don't forget to set credentials in `.env` file
 
 3. **Package and send Docker images from WSL (or Git Bash)**:
    ```bash
    cd ~
-   docker save -o money-manager-nginx.tar money-manager-nginx:1.2.0
-   docker save -o money-manager-backend.tar money-manager-backend:1.2.0
-   docker save -o money-manager-frontend.tar money-manager-frontend:1.2.0
+   docker save -o money-manager-nginx.tar money-manager-nginx:2.0.0
+   docker save -o money-manager-backend.tar money-manager-backend:2.0.0
+   docker save -o money-manager-frontend.tar money-manager-frontend:2.0.0
    scp money-manager-nginx.tar money-manager-backend.tar money-manager-frontend.tar gasymovrv@1.2.3.4:~/money-manager
    ```
 
 4. **Load images on VPS**:
    ```bash
+   cd ~/money-manager
    docker load -i money-manager-nginx.tar
    docker load -i money-manager-backend.tar
    docker load -i money-manager-frontend.tar
@@ -181,14 +203,16 @@ sudo chmod +x /usr/local/bin/docker-compose
 
 ### View Container Logs
 ```bash
-docker logs money-manager-money-manager-backend-1
+docker logs money-manager-backend
 ```
 
 ### Complete Cleanup (if needed)
 ```bash
-docker rm -f money-manager-backend money-manager-frontend money-manager-postgres
+docker rm -f money-manager-nginx money-manager-backend money-manager-frontend money-manager-postgres
 docker network rm money-manager-network
 docker volume rm money-manager-postgres-data
+
+docker rmi money-manager-nginx:2.0.0 money-manager-backend:2.0.0 money-manager-frontend:2.0.0
 ```
 
 ### Firewall Configuration (Optional)
@@ -232,7 +256,10 @@ docker-compose restart money-manager-nginx
 
 ### Access PostgreSQL
 ```bash
-docker exec -it money-manager-money-manager-postgres-1 psql -U mmpguser -d moneymanagerdb
+docker exec -it money-manager-postgres psql -U mmpguser -d moneymanagerdb
+
+# Then you can use SQL. Change password for example:
+ALTER ROLE mmpguser WITH PASSWORD 'pass';
 ```
 
 ## Instructions
