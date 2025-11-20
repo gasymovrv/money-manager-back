@@ -51,6 +51,44 @@ public abstract class BaseOperationService<
     logCreate(saved);
   }
 
+  /**
+   * Updates an existing operation (Income or Expense) with new data.
+   *
+   * <p>This method handles two distinct update scenarios:
+   * <ol>
+   *   <li><b>Date change:</b> When the operation date changes, the old operation is deleted
+   *       and a new one is created. This is necessary because changing the date affects
+   *       the associated {@code Saving} entity and requires recalculating savings for
+   *       multiple dates.</li>
+   *   <li><b>Same date update:</b> When only non-date fields change (value, description, etc.),
+   *       the operation is updated in place.</li>
+   * </ol>
+   *
+   * <p><b>Critical implementation detail - Avoiding optimistic locking errors:</b>
+   *
+   * <p>The {@code updatedOperation} is built as a new transient entity without an ID.
+   * The ID is deliberately set AFTER the date change check, not before. This ordering
+   * is crucial:
+   *
+   * <ul>
+   *   <li><b>For date changes:</b> The entity remains transient (no ID) when passed to
+   *       {@code saveNewOperation()}, allowing Hibernate to perform a proper INSERT for the
+   *       new operation.</li>
+   *   <li><b>For same-date updates:</b> The ID is set just before {@code save()}, making it
+   *       a detached entity with an ID. When {@code save()} is called, Hibernate performs
+   *       an UPDATE using the ID.</li>
+   * </ul>
+   *
+   * <p>Setting the ID earlier (before the date check) would cause the entity to have an ID
+   * when passed to {@code saveNewOperation()} for date changes, leading to Hibernate attempting
+   * a merge operation. This can trigger optimistic locking exceptions because the entity is
+   * detached and lacks proper version tracking.
+   *
+   * @param id the ID of the operation to update
+   * @param dto the new operation data from the request
+   * @return the updated operation as a DTO
+   * @throws EntityNotFoundException if the operation or category is not found
+   */
   @Transactional
   @Override
   public OperationResponseDto update(Long id, OperationRequestDto dto) {
@@ -58,7 +96,8 @@ public abstract class BaseOperationService<
     var currentAccountId = currentUser.getCurrentAccount().getId();
     var categoryId = dto.getCategoryId();
 
-    // Clone is needed to avoid changing after save by Hibernate
+    // Clone the existing operation to preserve original values for logging
+    // (after save, Hibernate may modify the entity in place)
     final O oldOperation = cloneOperation(
         operationRepository.findByIdAndAccountId(id, currentAccountId)
             .orElseThrow(() ->
@@ -67,11 +106,15 @@ public abstract class BaseOperationService<
                         id)))
     );
     C category = findCategory(categoryId, currentAccountId);
+
+    // Build a new transient entity (no ID yet) with the updated data
     O updatedOperation = buildNewOperation(dto, category);
-    updatedOperation.setId(id);
 
     var oldDate = oldOperation.getDate();
     var date = updatedOperation.getDate();
+    
+    // Handle date change: delete old and create new
+    // Note: updatedOperation has no ID, so saveNewOperation() will INSERT
     if (isChanged(oldDate, date)) {
       deleteOperation(oldOperation, currentAccountId);
       var savedDto = saveNewOperation(updatedOperation);
@@ -79,14 +122,21 @@ public abstract class BaseOperationService<
       return savedDto;
     }
 
+    // CRITICAL: Set ID only after date check to ensure proper Hibernate operation
+    // This makes the entity detached with an ID, allowing UPDATE on save()
+    updatedOperation.setId(id);
+    
     var oldValue = oldOperation.getValue();
     var value = updatedOperation.getValue();
     if (isChanged(oldValue, value)) {
+      // Update savings and set the new savingId on the operation
       updateSavings(value, oldValue, date, updatedOperation);
     } else {
+      // Value unchanged, preserve the existing savingId
       updatedOperation.setSavingId(oldOperation.getSavingId());
     }
 
+    // Hibernate will perform UPDATE because updatedOperation has an ID
     O saved = operationRepository.save(updatedOperation);
 
     var savedDto = operationMapper.toDto(saved);

@@ -180,6 +180,146 @@ class IncomeControllerIntegrationTest extends BaseIntegrationTest {
   }
 
   @Test
+  void update_shouldUpdateIncomeWithSameDate() throws Exception {
+    // Given: Create an income first
+    var createDto = new OperationRequestDto();
+    createDto.setDate(LocalDate.now());
+    createDto.setValue(BigDecimal.valueOf(3000));
+    createDto.setDescription("Initial Income");
+    createDto.setIsPlanned(false);
+    createDto.setCategoryId(testCategory.getId());
+
+    var createResult = mockMvc.perform(post(apiBaseUrl + "/incomes")
+            .header("Authorization", getAuthorizationHeader())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(createDto)))
+        .andExpect(status().isOk())
+        .andReturn();
+
+    var createdIncomeJson = createResult.getResponse().getContentAsString();
+    var createdId = objectMapper.readTree(createdIncomeJson).get("id").asLong();
+
+    var initialSaving = savingRepository.findByDateAndAccountId(LocalDate.now(), testAccount.getId()).orElseThrow();
+    var initialSavingValue = initialSaving.getValue();
+    var initialCount = incomeRepository.count();
+
+    // When: Update the income with same date but different value and description
+    var updateDto = new OperationRequestDto();
+    updateDto.setDate(LocalDate.now()); // Same date
+    updateDto.setValue(BigDecimal.valueOf(4500)); // Changed value (increase of 1500)
+    updateDto.setDescription("Updated Income"); // Changed description
+    updateDto.setIsPlanned(false); // Keep false since date is today
+    updateDto.setCategoryId(testCategory.getId());
+
+    mockMvc.perform(put(apiBaseUrl + "/incomes/" + createdId)
+            .header("Authorization", getAuthorizationHeader())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(updateDto)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(createdId))
+        .andExpect(jsonPath("$.value").value(4500))
+        .andExpect(jsonPath("$.description").value("Updated Income"))
+        .andExpect(jsonPath("$.isPlanned").value(false));
+
+    // Then: Verify database state - no new income created, existing one updated
+    assertThat(incomeRepository.count()).isEqualTo(initialCount);
+
+    var updatedIncome = incomeRepository.findById(createdId).orElseThrow();
+    assertThat(updatedIncome.getValue()).isEqualByComparingTo(BigDecimal.valueOf(4500));
+    assertThat(updatedIncome.getDescription()).isEqualTo("Updated Income");
+    assertThat(updatedIncome.getIsPlanned()).isFalse();
+    assertThat(updatedIncome.getDate()).isEqualTo(LocalDate.now());
+
+    // Verify savings increased by 1500 (difference between 4500 and 3000)
+    var updatedSaving = savingRepository.findByDateAndAccountId(LocalDate.now(), testAccount.getId()).orElseThrow();
+    assertThat(updatedSaving.getValue())
+        .isEqualByComparingTo(initialSavingValue.add(BigDecimal.valueOf(1500)));
+  }
+
+  @Test
+  void update_shouldUpdateIncomeWithDifferentDate() throws Exception {
+    // Given: Create savings for both dates
+    var tomorrow = LocalDate.now().plusDays(1);
+    var savingTomorrow = Saving.builder()
+        .date(tomorrow)
+        .value(BigDecimal.valueOf(500))
+        .accountId(testAccount.getId())
+        .build();
+    savingRepository.save(savingTomorrow);
+
+    // Create an income for today
+    var createDto = new OperationRequestDto();
+    createDto.setDate(LocalDate.now());
+    createDto.setValue(BigDecimal.valueOf(2000));
+    createDto.setDescription("Today Income");
+    createDto.setIsPlanned(false);
+    createDto.setCategoryId(testCategory.getId());
+
+    var createResult = mockMvc.perform(post(apiBaseUrl + "/incomes")
+            .header("Authorization", getAuthorizationHeader())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(createDto)))
+        .andExpect(status().isOk())
+        .andReturn();
+
+    var createdIncomeJson = createResult.getResponse().getContentAsString();
+    var createdId = objectMapper.readTree(createdIncomeJson).get("id").asLong();
+
+    // Capture savings AFTER creating the income
+    // Important: Creating income for today affects tomorrow's saving too (recalculateOthersFunc)
+    var initialTodaySaving = savingRepository.findByDateAndAccountId(LocalDate.now(), testAccount.getId()).orElseThrow();
+    var initialTomorrowSaving = savingRepository.findByDateAndAccountId(tomorrow, testAccount.getId()).orElseThrow();
+    var initialCount = incomeRepository.count();
+
+    // When: Update the income to a different date
+    var updateDto = new OperationRequestDto();
+    updateDto.setDate(tomorrow); // Different date
+    updateDto.setValue(BigDecimal.valueOf(2000)); // Same value
+    updateDto.setDescription("Tomorrow Income");
+    updateDto.setIsPlanned(false);
+    updateDto.setCategoryId(testCategory.getId());
+
+    mockMvc.perform(put(apiBaseUrl + "/incomes/" + createdId)
+            .header("Authorization", getAuthorizationHeader())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(updateDto)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.value").value(2000))
+        .andExpect(jsonPath("$.description").value("Tomorrow Income"));
+
+    // Then: Verify the old income was deleted and a new one created
+    // (date change triggers delete + create in BaseOperationService)
+    assertThat(incomeRepository.count()).isEqualTo(initialCount);
+    assertThat(incomeRepository.findById(createdId)).isEmpty(); // Old income deleted
+
+    var newIncome = incomeRepository.findAll().stream()
+        .filter(i -> "Tomorrow Income".equals(i.getDescription()))
+        .findFirst()
+        .orElseThrow();
+    assertThat(newIncome.getId()).isNotEqualTo(createdId); // Different ID (new record)
+    assertThat(newIncome.getDate()).isEqualTo(tomorrow);
+    assertThat(newIncome.getValue()).isEqualByComparingTo(BigDecimal.valueOf(2000));
+
+    // Verify today's saving - if it was the only operation, saving gets deleted
+    // Otherwise, it should be decreased by 2000
+    var updatedTodaySaving = savingRepository.findByDateAndAccountId(LocalDate.now(), testAccount.getId());
+    if (updatedTodaySaving.isPresent()) {
+      assertThat(updatedTodaySaving.get().getValue())
+          .isEqualByComparingTo(initialTodaySaving.getValue().subtract(BigDecimal.valueOf(2000)));
+    }
+    // If empty, it means this was the only operation and the saving was deleted (valid behavior)
+
+    // Verify tomorrow's saving - moving income from today to tomorrow has NO NET EFFECT on tomorrow:
+    // 1. Deleting from today DECREASES tomorrow by 2000 (recalculateOthersFunc)
+    // 2. Adding to tomorrow INCREASES tomorrow by 2000
+    // Net result: tomorrow's value remains the same
+    var updatedTomorrowSaving = savingRepository.findByDateAndAccountId(tomorrow, testAccount.getId());
+    assertThat(updatedTomorrowSaving).isPresent();
+    assertThat(updatedTomorrowSaving.get().getValue())
+        .isEqualByComparingTo(initialTomorrowSaving.getValue());
+  }
+
+  @Test
   void shouldReturnUnauthorized_whenNoToken() throws Exception {
     mockMvc.perform(get(apiBaseUrl + "/incomes/categories"))
         .andExpect(status().isUnauthorized());
