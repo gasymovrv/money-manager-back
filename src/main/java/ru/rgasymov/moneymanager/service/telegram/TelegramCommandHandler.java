@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import ru.rgasymov.moneymanager.domain.dto.request.OperationRequestDto;
 import ru.rgasymov.moneymanager.domain.dto.request.TelegramWebhookDto;
 import ru.rgasymov.moneymanager.domain.dto.response.OperationCategoryResponseDto;
+import ru.rgasymov.moneymanager.domain.entity.Account;
 import ru.rgasymov.moneymanager.domain.entity.BaseOperation;
 import ru.rgasymov.moneymanager.domain.entity.BaseOperationCategory;
 import ru.rgasymov.moneymanager.domain.entity.ReportTask;
@@ -375,18 +376,18 @@ public class TelegramCommandHandler {
       Long chatId,
       String data
   ) {
-    var accountId = validateAndGetAccountId(data, telegramUser, chatId);
-    if (accountId.isEmpty()) {
+    var account = validateAndGetAccount(data, telegramUser, chatId);
+    if (account.isEmpty()) {
       return;
     }
 
-    var accountOpt = accountRepository.findByIdAndUserId(accountId.get(), telegramUser.getUser().getId());
+    var accountOpt = accountRepository.findByIdAndUserId(account.get().getId(), telegramUser.getUser().getId());
     if (accountOpt.isEmpty()) {
       telegramBotClient.sendMessage(chatId, "Selected account is not available. Please try /selectAccount again.");
       return;
     }
 
-    saveUserState(userState, ConversationState.NONE, accountId.get(), null);
+    saveUserState(userState, ConversationState.NONE, account.get().getId(), null);
     telegramBotClient.answerCallbackQuery(callback.getId());
     telegramBotClient.sendMessage(chatId, "Account '" + accountOpt.get().getName() + "' has been selected.");
   }
@@ -736,8 +737,8 @@ public class TelegramCommandHandler {
     return new DateInput(startDate, endDate);
   }
 
-  private Optional<Long> validateAndGetAccountId(String data, TelegramUser telegramUser, Long chatId) {
-    Long accountId;
+  private Optional<Account> validateAndGetAccount(String data, TelegramUser telegramUser, Long chatId) {
+    long accountId;
     try {
       accountId = Long.parseLong(data.substring(SELECT_ACCOUNT_CB_PREFIX.length()));
     } catch (NumberFormatException ex) {
@@ -751,7 +752,7 @@ public class TelegramCommandHandler {
       telegramBotClient.sendMessage(chatId, "Selected account is not available.");
       return Optional.empty();
     }
-    return Optional.of(accountId);
+    return accountOpt;
   }
 
   private Optional<OperationCategoryResponseDto> validateAndGetCategoryId(
@@ -796,8 +797,13 @@ public class TelegramCommandHandler {
       Long chatId
   ) {
     try {
+      var accountOpt = accountRepository.findByIdAndUserId(userState.getSelectedAccountId(), telegramUser.getUser().getId());
+      if (accountOpt.isEmpty()) {
+        telegramBotClient.sendMessage(chatId, "Selected account is not available. Please try /selectAccount again.");
+        return;
+      }
       // Set security context for the service call
-      setSecurityContext(telegramUser.getUser());
+      setSecurityContext(telegramUser.getUser(), accountOpt.get());
 
       var dto = new OperationRequestDto();
       dto.setCategoryId(userState.getSelectedCategoryId());
@@ -845,8 +851,15 @@ public class TelegramCommandHandler {
 
   /**
    * Set security context for the given user to enable service calls that require authenticated user.
+   * <p>
+   * This is a workaround for the fact that Spring Security requires an authenticated user to perform service calls.
+   * </p>
+   * <p>
+   * We must set selected in Telegram Bot account to temporary change current Web account saved in DB
+   * </p>
    */
-  private void setSecurityContext(User user) {
+  private void setSecurityContext(User user, Account selectedAccount) {
+    user.setCurrentAccount(selectedAccount);
     var principal = UserPrincipal.create(user);
     var authentication = new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
     SecurityContextHolder.getContext().setAuthentication(authentication);
